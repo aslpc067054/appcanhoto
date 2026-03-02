@@ -1,40 +1,8 @@
 import 'package:flutter/material.dart';
-import 'login_page.dart'; // ajuste o import conforme o seu package name/caminho real
-import 'configuracao_page.dart'; // <-- importe a tela de Configurações
+import 'package:appcanhoto/pages/cadatro_usuario_page.dart';
 
-class HomePage extends StatelessWidget {
-  final String usuario;
-
-  const HomePage({super.key, required this.usuario});
-
-  void _logout(BuildContext context) async {
-    // (Opcional) Confirmação de logout
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Sair'),
-        content: const Text('Deseja realmente encerrar a sessão?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sair')),
-        ],
-      ),
-    );
-    if (confirmar != true) return;
-
-    // Navega para a tela de Login e remove toda a pilha de rotas
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-      (route) => false,
-    );
-  }
-
-  void _abrirConfiguracoes(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const ConfiguracaoPage()),
-    );
-  }
+class ConfiguracaoPage extends StatelessWidget {
+  const ConfiguracaoPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +10,7 @@ class HomePage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Bem-vindo, $usuario"),
+        title: const Text('Configurações'),
         centerTitle: true,
         backgroundColor: isDark ? Colors.black : null,
       ),
@@ -56,40 +24,39 @@ class HomePage extends StatelessWidget {
           children: [
             _buildIcon(
               context,
-              Icons.person,
-              "Canhotos",
+              Icons.settings,
+              "Usuários",
               onTap: () {
-                // TODO: navegar para Canhotos
+                // TODO: Navegar para tela de Usuários
+               Navigator.push(context, MaterialPageRoute(builder: (_) => CadastroUsuarioPage()));
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Abrir: Canhotos')),
+                  const SnackBar(content: Text('Abrir: Usuários')),
                 );
               },
             ),
-            _buildIcon(
-              context,
-              Icons.shopping_cart,
-              "Relatórios",
-              onTap: () {
-                // TODO: navegar para Relatórios
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Abrir: Relatórios')),
-                );
-              },
-            ),
-            // CONFIGURAÇÕES -> abre ConfiguracaoPage
             _buildIcon(
               context,
               Icons.settings,
-              "Configurações",
-              onTap: () => _abrirConfiguracoes(context),
+              "Acessos",
+              onTap: () {
+                // TODO: Navegar para tela de Acessos/Perfis/Permissões
+                // Navigator.push(context, MaterialPageRoute(builder: (_) => AcessosPage()));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Abrir: Acessos')),
+                );
+              },
             ),
-
-            // SAIR
             _buildIcon(
               context,
-              Icons.logout,
-              "Sair",
-              onTap: () => _logout(context),
+              Icons.settings,
+              "Empresas",
+              onTap: () {
+                // TODO: Navegar para tela de Empresas
+                // Navigator.push(context, MaterialPageRoute(builder: (_) => EmpresasPage()));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Abrir: Empresas')),
+                );
+              },
             ),
           ],
         ),
@@ -124,7 +91,11 @@ class HomePage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 50, color: isDark ? Colors.white : Colors.blue),
+            Icon(
+              icon,
+              size: 50,
+              color: isDark ? Colors.white : Colors.blue,
+            ),
             const SizedBox(height: 10),
             Text(
               label,
