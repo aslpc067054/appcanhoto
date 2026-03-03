@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-/// Modelo simples de usuário (ajuste conforme sua API)
+/// Modelo simples de usuário (ajuste conforme sua API, se necessário)
 class Usuario {
   final int id;
   final String usuario;
@@ -60,7 +60,7 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
     return 'http://localhost:5166'; // iOS simulador / desktop
   }
 
-  Map<String, String> get _headers => {
+  Map<String, String> get _headers => const {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       };
@@ -79,6 +79,10 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
     super.dispose();
   }
 
+  // ==========================
+  // CRUD - API CALLS
+  // ==========================
+
   Future<void> _carregarUsuarios() async {
     setState(() => _loadingLista = true);
     try {
@@ -87,6 +91,8 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
 
       if (resp.statusCode == 200) {
         final body = jsonDecode(resp.body);
+
+        // A API retorna uma lista direta de objetos [{id, usuario, nomeCompleto}]
         final list = (body is List) ? body : (body['data'] ?? []) as List;
         _usuarios = list.map((e) => Usuario.fromJson(e as Map<String, dynamic>)).toList();
       } else {
@@ -99,27 +105,20 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
     }
   }
 
-  void _limparCampos() {
-    _usuarioCtrl.clear();
-    _nomeCtrl.clear();
-    _senhaCtrl.clear();
-    setState(() {
-      _editingId = null;
-    });
-  }
-
   Future<void> _salvar() async {
-    if (!_validarCampos()) return;
+    // Faz a validação dos campos do Form (mostra mensagens nos campos também)
+    final formOk = _formKey.currentState?.validate() ?? false;
+    if (!formOk) return;
 
     final usuario = _usuarioCtrl.text.trim();
     final nome = _nomeCtrl.text.trim();
-    final senha = _senhaCtrl.text; // pode ser vazio em edição, se sua API aceitar
+    final senha = _senhaCtrl.text; // AGORA É OBRIGATÓRIA, inclusive na edição
 
+    // Payload SEMPRE com senha
     final payload = {
       'usuario': usuario,
-      'nomeCompleto': nome, // ajuste chave conforme sua API
-      // Em edição, algumas APIs permitem senha opcional; em criação, geralmente é obrigatório
-      if (_editingId == null || senha.isNotEmpty) 'senha': senha,
+      'nomeCompleto': nome,
+      'senha': senha,
     };
 
     setState(() => _salvando = true);
@@ -139,14 +138,20 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
             .timeout(const Duration(seconds: 20));
       }
 
-      if (resp.statusCode == 200 || resp.statusCode == 201 || resp.statusCode == 204) {
-        _showSnack(_editingId == null ? 'Usuário cadastrado com sucesso.' : 'Usuário atualizado com sucesso.');
+      if (resp.statusCode == 201) {
+        _showSnack('Usuário cadastrado com sucesso.');
+        _limparCampos();
+        await _carregarUsuarios();
+      } else if (resp.statusCode == 200 || resp.statusCode == 204) {
+        _showSnack('Usuário atualizado com sucesso.');
         _limparCampos();
         await _carregarUsuarios();
       } else if (resp.statusCode == 400) {
         _showSnack('Dados inválidos: ${resp.body}');
       } else if (resp.statusCode == 409) {
         _showSnack('Usuário já existente.');
+      } else if (resp.statusCode == 404) {
+        _showSnack('Usuário não encontrado (404).');
       } else {
         _showSnack('Erro ao salvar (${resp.statusCode}): ${resp.body}');
       }
@@ -157,17 +162,44 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
     }
   }
 
+  Future<void> _excluirUsuario(int id) async {
+    setState(() => _excluindoId = id);
+    try {
+      final uri = Uri.parse('$baseUrl/api/usuarios/$id');
+      final resp = await http.delete(uri, headers: _headers).timeout(const Duration(seconds: 20));
+
+      if (resp.statusCode == 200 || resp.statusCode == 202 || resp.statusCode == 204) {
+        // Remover localmente para resposta imediata
+        _usuarios.removeWhere((x) => x.id == id);
+        setState(() {});
+        _showSnack('Usuário excluído com sucesso.');
+      } else if (resp.statusCode == 404) {
+        _showSnack('Usuário não encontrado (404).');
+        await _carregarUsuarios();
+      } else if (resp.statusCode == 409) {
+        _showSnack('Não foi possível excluir: conflito (409).');
+      } else {
+        _showSnack('Erro ao excluir (${resp.statusCode}): ${resp.body}');
+      }
+    } catch (e) {
+      _showSnack('Falha de conexão ao excluir.');
+    } finally {
+      if (mounted) setState(() => _excluindoId = null);
+    }
+  }
+
+  // ==========================
+  // UI helpers
+  // ==========================
+
+  /// Agora os 3 campos são OBRIGATÓRIOS sempre (inclusive na edição).
   bool _validarCampos() {
     final usuario = _usuarioCtrl.text.trim();
     final nome = _nomeCtrl.text.trim();
     final senha = _senhaCtrl.text;
 
-    if (usuario.isEmpty || nome.isEmpty) {
-      _showSnack('Preencha Usuário e Nome completo.');
-      return false;
-    }
-    if (_editingId == null && senha.isEmpty) {
-      _showSnack('Informe uma senha para criar o usuário.');
+    if (usuario.isEmpty || nome.isEmpty || senha.isEmpty) {
+      _showSnack('Preencha Usuário, Nome completo e Senha.');
       return false;
     }
     return true;
@@ -178,7 +210,7 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
       _editingId = u.id;
       _usuarioCtrl.text = u.usuario;
       _nomeCtrl.text = u.nomeCompleto;
-      _senhaCtrl.clear(); // não carregamos senha
+      _senhaCtrl.clear(); // por segurança, peça para informar a nova senha
     });
     _showSnack('Modo edição: ${u.usuario}');
   }
@@ -208,35 +240,22 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
     }
   }
 
-  Future<void> _excluirUsuario(int id) async {
-    setState(() => _excluindoId = id);
-    try {
-      final uri = Uri.parse('$baseUrl/api/usuarios/$id');
-      final resp = await http.delete(uri, headers: _headers).timeout(const Duration(seconds: 20));
-
-      if (resp.statusCode == 200 || resp.statusCode == 202 || resp.statusCode == 204) {
-        // Remover localmente para sentir a resposta imediata
-        _usuarios.removeWhere((x) => x.id == id);
-        setState(() {}); // atualiza grid
-        _showSnack('Usuário excluído com sucesso.');
-      } else if (resp.statusCode == 404) {
-        _showSnack('Usuário não encontrado (404).');
-        await _carregarUsuarios();
-      } else if (resp.statusCode == 409) {
-        _showSnack('Não foi possível excluir: conflito (409).');
-      } else {
-        _showSnack('Erro ao excluir (${resp.statusCode}): ${resp.body}');
-      }
-    } catch (e) {
-      _showSnack('Falha de conexão ao excluir.');
-    } finally {
-      if (mounted) setState(() => _excluindoId = null);
-    }
+  void _limparCampos() {
+    _usuarioCtrl.clear();
+    _nomeCtrl.clear();
+    _senhaCtrl.clear();
+    setState(() {
+      _editingId = null;
+    });
   }
 
   void _showSnack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
+
+  // ==========================
+  // BUILD
+  // ==========================
 
   @override
   Widget build(BuildContext context) {
@@ -244,7 +263,7 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_editingId == null ? 'Cadastro de Usuário' : 'Editar Usuário (#$_editingId)'),
+        title: Text(_editingId == null ? 'Cadastro de Usuário' : 'Editar Usuário'),
         centerTitle: true,
         backgroundColor: isDark ? Colors.black : null,
       ),
@@ -263,29 +282,38 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
                 padding: const EdgeInsets.all(16),
                 child: Form(
                   key: _formKey,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
                   child: Column(
                     children: [
-                      // Usuário
+                      // Usuário (obrigatório)
                       TextFormField(
                         controller: _usuarioCtrl,
                         decoration: const InputDecoration(
                           labelText: 'Usuário',
                           prefixIcon: Icon(Icons.person),
                         ),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'Informe o usuário';
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 12),
 
-                      // Nome completo
+                      // Nome completo (obrigatório)
                       TextFormField(
                         controller: _nomeCtrl,
                         decoration: const InputDecoration(
                           labelText: 'Nome completo',
                           prefixIcon: Icon(Icons.badge),
                         ),
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'Informe o nome completo';
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 12),
 
-                      // Senha (em edição pode ficar vazia, se sua API aceitar)
+                      // Senha (obrigatória sempre)
                       TextFormField(
                         controller: _senhaCtrl,
                         obscureText: true,
@@ -293,6 +321,11 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
                           labelText: 'Senha',
                           prefixIcon: Icon(Icons.lock),
                         ),
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'Informe a senha';
+                          if (v.length < 3) return 'Senha muito curta';
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
 
@@ -311,7 +344,14 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
                                     )
                                   : const Icon(Icons.save),
                               label: Text(_editingId == null ? 'Salvar' : 'Atualizar'),
-                              onPressed: _salvando ? null : _salvar,
+                              onPressed: _salvando
+                                  ? null
+                                  : () {
+                                      // validação visual do Form + validação adicional
+                                      if ((_formKey.currentState?.validate() ?? false) && _validarCampos()) {
+                                        _salvar();
+                                      }
+                                    },
                               style: FilledButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(vertical: 14),
                               ),
@@ -369,6 +409,7 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
       );
     }
 
+    // Permite rolagem horizontal se a tela for estreita
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(

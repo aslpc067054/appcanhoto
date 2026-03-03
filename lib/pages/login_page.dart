@@ -7,7 +7,6 @@ import 'home_page.dart';
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // Tema escuro com fundo preto
     final darkTheme = ThemeData(
       brightness: Brightness.dark,
       scaffoldBackgroundColor: Colors.black,
@@ -16,7 +15,6 @@ class MyApp extends StatelessWidget {
         brightness: Brightness.dark,
       ),
       useMaterial3: true,
-      // Deixa campos com estilo bom para dark
       inputDecorationTheme: const InputDecorationTheme(
         labelStyle: TextStyle(color: Colors.white70),
         hintStyle: TextStyle(color: Colors.white60),
@@ -61,13 +59,11 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
   String? _erroSenha;
 
-  // Descobre a baseUrl conforme a plataforma
   String get baseUrl {
-    if (kIsWeb) return 'https://localhost:7245'; // Web → HTTPS (porta correta)
+    if (kIsWeb) return 'https://localhost:7245';
     if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:5166'; // Android emulador
+      return 'http://10.0.2.2:5166';
     }
-    // iOS simulador ou desktop
     return 'http://localhost:5166';
   }
 
@@ -79,10 +75,10 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _login() async {
-    final usuario = _usuarioController.text.trim();
+    final usuarioInput = _usuarioController.text.trim();
     final senha = _senhaController.text.trim();
 
-    if (usuario.isEmpty || senha.isEmpty) {
+    if (usuarioInput.isEmpty || senha.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Preencha usuário e senha")),
       );
@@ -96,32 +92,39 @@ class _LoginPageState extends State<LoginPage> {
 
     final uri = Uri.parse('$baseUrl/api/login');
     debugPrint('[LOGIN] POST $uri');
-    debugPrint('[LOGIN] Usuario="$usuario"');
+    debugPrint('[LOGIN] Usuario="$usuarioInput"');
 
     try {
       final response = await http
           .post(
             uri,
             headers: {"Content-Type": "application/json"},
-            body: jsonEncode({"usuario": usuario, "senha": senha}),
+            body: jsonEncode({"usuario": usuarioInput, "senha": senha}),
           )
           .timeout(const Duration(seconds: 15));
 
       debugPrint('[LOGIN] status=${response.statusCode} body=${response.body}');
 
       if (response.statusCode == 200) {
+        // ✅ Apenas uma leitura do body e uma navegação
         final data = jsonDecode(response.body);
+        final int idUsuario = data['id'];
+        final String usuario = data['usuario'];
+
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (_) => HomePage(usuario: data["usuario"]),
+            builder: (_) => HomePage(
+              idUsuario: idUsuario, // HomePage agora exige idUsuario
+              usuario: usuario,
+            ),
           ),
         );
+
       } else if (response.statusCode == 401) {
         setState(() => _erroSenha = "Usuário ou senha inválidos");
         _senhaController.clear();
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Usuário ou senha inválidos"),
@@ -165,8 +168,6 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Fundo já vem do theme (preto), mas se quiser, pode forçar:
-      // backgroundColor: Colors.black,
       body: Center(
         child: SingleChildScrollView(
           child: ConstrainedBox(
@@ -176,8 +177,6 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // ====== IMAGEM NO LUGAR DO ICONE ======
-                  // Ajuste o caminho do asset conforme você colocou no projeto
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: Image.asset(
@@ -186,30 +185,26 @@ class _LoginPageState extends State<LoginPage> {
                       fit: BoxFit.contain,
                     ),
                   ),
-
                   const SizedBox(height: 20),
-
                   const Text(
                     "Login",
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: Color.fromARGB(255, 0, 0, 0), // título em branco
+                      color: Color.fromARGB(255, 0, 0, 0), // título branco
                     ),
                   ),
-
                   const SizedBox(height: 30),
 
                   // USUÁRIO
                   TextField(
                     controller: _usuarioController,
-                    style: const TextStyle(color: Color.fromARGB(255, 3, 3, 3)),
+                    style: const TextStyle(color: Color.fromARGB(255, 0, 0, 0)),
                     decoration: const InputDecoration(
                       labelText: "Usuário",
                       prefixIcon: Icon(Icons.person),
                     ),
                   ),
-
                   const SizedBox(height: 16),
 
                   // SENHA
@@ -225,13 +220,12 @@ class _LoginPageState extends State<LoginPage> {
                       suffixIcon: IconButton(
                         icon: Icon(
                           _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                          color: const Color.fromARGB(179, 2, 2, 2),
+                          color: const Color.fromARGB(179, 0, 0, 0),
                         ),
                         onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 24),
 
                   SizedBox(

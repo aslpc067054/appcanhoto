@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'pages/login_page.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+  // não vamos usar adapters (vamos salvar JSON puro)
+  await Hive.openBox('offline_queue'); // caixa única para as filas
   runApp(const MyApp());
 }
 
