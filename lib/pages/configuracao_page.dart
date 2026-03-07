@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:appcanhoto/pages/cadastro_usuario_page.dart';
-import 'package:appcanhoto/pages/cadastro_empresa_page.dart'; // <<< import da tela de empresas
+import 'package:appcanhoto/pages/cadastro_empresa_page.dart';
+import 'package:appcanhoto/pages/permissao_page.dart'; // <<< novo import
 
 class ConfiguracaoPage extends StatelessWidget {
   const ConfiguracaoPage({super.key});
@@ -16,57 +17,41 @@ class ConfiguracaoPage extends StatelessWidget {
         backgroundColor: isDark ? Colors.black : null,
       ),
       backgroundColor: isDark ? Colors.black : null,
-
-      // Centraliza e limita a largura total para evitar cards gigantes em telas largas
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 900), // largura máxima da grade
+          constraints: const BoxConstraints(maxWidth: 900),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: GridView(
               gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                maxCrossAxisExtent: 220,            // largura máx. por card
+                maxCrossAxisExtent: 220,
                 crossAxisSpacing: 20,
                 mainAxisSpacing: 20,
-                childAspectRatio: 180 / 160,        // mantém a proporção visual
+                childAspectRatio: 180 / 160,
               ),
               children: [
-                // USUÁRIOS
                 _buildIcon(
                   context,
                   icon: Icons.settings,
                   label: "Usuários",
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const CadastroUsuarioPage()),
-                    );
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const CadastroUsuarioPage()));
                   },
                 ),
-
-                // ACESSOS
                 _buildIcon(
                   context,
                   icon: Icons.settings,
-                  label: "Acessos",
+                  label: "Permissões",
                   onTap: () {
-                    // TODO: Navegar para Acessos/Perfis/Permissões
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Abrir: Acessos')),
-                    );
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const PermissaoPage()));
                   },
                 ),
-
-                // EMPRESAS -> abre CadastroEmpresaPage
                 _buildIcon(
                   context,
                   icon: Icons.settings,
                   label: "Empresas",
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const CadastroEmpresaPage()),
-                    );
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const CadastroEmpresaPage()));
                   },
                 ),
               ],
@@ -77,7 +62,6 @@ class ConfiguracaoPage extends StatelessWidget {
     );
   }
 
-  /// Card com tamanho controlado (consistente com a Home)
   Widget _buildIcon(
     BuildContext context, {
     required IconData icon,
@@ -89,7 +73,7 @@ class ConfiguracaoPage extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Center(
-        child: SizedBox( // controla o tamanho do card
+        child: SizedBox(
           width: 180,
           height: 160,
           child: Container(
@@ -109,13 +93,13 @@ class ConfiguracaoPage extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 42, color: isDark ? Colors.white : Colors.blue), // ícone menor fixo
+                Icon(icon, size: 42, color: isDark ? Colors.white : Colors.blue),
                 const SizedBox(height: 10),
                 Text(
                   label,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontSize: 15, // fonte fixa
+                    fontSize: 15,
                     color: isDark ? Colors.white : Colors.black87,
                     fontWeight: FontWeight.w600,
                   ),

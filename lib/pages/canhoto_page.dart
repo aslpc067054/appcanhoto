@@ -21,9 +21,14 @@ class Empresa {
   Empresa({required this.id, required this.nomeFantasia, required this.status});
 
   factory Empresa.fromJson(Map<String, dynamic> j) => Empresa(
-        id: j['id'] is int ? j['id'] : int.parse(j['id'].toString()),
-        nomeFantasia: (j['nomeFantasia'] ?? j['nome_fantasia'] ?? '') as String,
-        status: j['status'] is int ? j['status'] : int.tryParse('${j['status']}') ?? 0,
+        // aceita PascalCase e camelCase
+        id: (j['Id'] ?? j['id']) is int
+            ? (j['Id'] ?? j['id']) as int
+            : int.parse((j['Id'] ?? j['id']).toString()),
+        nomeFantasia: (j['NomeFantasia'] ?? j['nomeFantasia'] ?? j['nome_fantasia'] ?? '') as String,
+        status: (j['Status'] ?? j['status']) is int
+            ? (j['Status'] ?? j['status']) as int
+            : int.tryParse('${j['Status'] ?? j['status']}') ?? 0,
       );
 }
 
@@ -127,6 +132,10 @@ class _CanhotoPageState extends State<CanhotoPage> {
   // Feature flag: usar API (true) ou apenas memória (false)
   static const bool _usarApi = true;
 
+  // FocusNodes para controlar foco e fechar o autocomplete
+  FocusNode? _empresaFocusNode;     // recebe o focusNode fornecido pelo Autocomplete
+  final _notaFocusNode = FocusNode(); // foco do campo de Nº da Nota
+
   String get baseUrl {
     if (kIsWeb) return 'https://localhost:7245';
     if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:5166';
@@ -151,6 +160,8 @@ class _CanhotoPageState extends State<CanhotoPage> {
   void dispose() {
     _notaCtrl.dispose();
     _empresaCtrl.dispose();
+    _notaFocusNode.dispose(); // liberar foco da NF
+    // _empresaFocusNode é gerenciado pelo Autocomplete; não chamamos dispose aqui.
     _connSub?.cancel();
     super.dispose();
   }
@@ -284,7 +295,8 @@ class _CanhotoPageState extends State<CanhotoPage> {
           final body = jsonDecode(resp.body);
           final List lista = (body is List) ? body : (body['data'] ?? []) as List;
           final empresas = lista.map((e) => Empresa.fromJson(e as Map<String, dynamic>)).toList();
-          _empresasAtivas = empresas.where((e) => e.status == 0).toList()..sort((a, b) => a.nomeFantasia.compareTo(b.nomeFantasia));
+          _empresasAtivas = empresas.where((e) => e.status == 0).toList()
+            ..sort((a, b) => a.nomeFantasia.compareTo(b.nomeFantasia));
         } else {
           _showSnack('Erro ao carregar empresas (${resp.statusCode})');
         }
@@ -296,7 +308,7 @@ class _CanhotoPageState extends State<CanhotoPage> {
     }
   }
 
-  // GET paginado: lista de metadados (sem imagem)
+  // GET paginado: lista de metadados (sem imagem) — APENAS do usuário logado
   Future<void> _carregarCanhotosDoDia({int page = 1, int pageSize = 20}) async {
     setState(() => _carregandoHoje = true);
     try {
@@ -304,7 +316,12 @@ class _CanhotoPageState extends State<CanhotoPage> {
         final hoje = DateTime.now();
         final data =
             '${hoje.year.toString().padLeft(4, '0')}-${hoje.month.toString().padLeft(2, '0')}-${hoje.day.toString().padLeft(2, '0')}';
-        final uri = Uri.parse('$baseUrl/api/canhotos?data=$data&page=$page&pageSize=$pageSize');
+
+        // >>> Sempre enviar idUsuario no GET para filtrar no backend
+        final uri = Uri.parse(
+          '$baseUrl/api/canhotos?data=$data&page=$page&pageSize=$pageSize&idUsuario=${widget.idUsuario}',
+        );
+
         final resp = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 30));
         if (resp.statusCode == 200) {
           final json = jsonDecode(resp.body);
@@ -322,6 +339,9 @@ class _CanhotoPageState extends State<CanhotoPage> {
                     pendente: false,
                   ))
               .toList();
+
+          // >>> Reforço: garante filtro local por usuário logado
+          _canhotosHoje = _canhotosHoje.where((c) => c.idUsuario == widget.idUsuario).toList();
 
           // persiste a lista do dia em disco
           await _saveTodayListToDisk();
@@ -361,7 +381,7 @@ class _CanhotoPageState extends State<CanhotoPage> {
   }
 
   // =========================
-  // SALVAR / EDITAR / EXCLUIR (inativar não se aplica a canhoto; aqui é excluir)
+  // SALVAR / EDITAR / EXCLUIR
   // =========================
 
   bool _validarForm() {
@@ -708,7 +728,7 @@ class _CanhotoPageState extends State<CanhotoPage> {
                                 return _empresasAtivas.where((e) => e.nomeFantasia.toLowerCase().startsWith(txt));
                               },
                               fieldViewBuilder: (ctx, controller, focus, onFieldSubmit) {
-                                // usa o nosso _empresaCtrl para validar
+                                _empresaFocusNode = focus; // guardamos o FocusNode do campo
                                 controller.text = _empresaCtrl.text;
                                 controller.selection = _empresaCtrl.selection;
                                 controller.addListener(() {
@@ -722,11 +742,20 @@ class _CanhotoPageState extends State<CanhotoPage> {
                                     prefixIcon: Icon(Icons.apartment),
                                   ),
                                   validator: (_) => _empresaSelecionada == null ? 'Selecione a empresa' : null,
+                                  textInputAction: TextInputAction.next,
+                                  onFieldSubmitted: (_) => _notaFocusNode.requestFocus(), // pular para NF ao pressionar enter
                                 );
                               },
                               onSelected: (e) {
                                 _empresaSelecionada = e;
                                 _empresaCtrl.text = e.nomeFantasia;
+
+                                // fechar o overlay desfocando o campo
+                                _empresaFocusNode?.unfocus();
+
+                                // focar no campo da NF
+                                _notaFocusNode.requestFocus();
+
                                 setState(() {});
                               },
                               optionsViewBuilder: (ctx, onSelected, options) {
@@ -743,7 +772,11 @@ class _CanhotoPageState extends State<CanhotoPage> {
                                           final e = options.elementAt(i);
                                           return ListTile(
                                             title: Text(e.nomeFantasia),
-                                            onTap: () => onSelected(e),
+                                            onTap: () {
+                                              onSelected(e);
+                                              FocusScope.of(ctx).unfocus();
+                                              _notaFocusNode.requestFocus();
+                                            },
                                           );
                                         },
                                       ),
@@ -757,6 +790,7 @@ class _CanhotoPageState extends State<CanhotoPage> {
                       // Nº Nota Fiscal
                       TextFormField(
                         controller: _notaCtrl,
+                        focusNode: _notaFocusNode, // receber foco após selecionar empresa
                         decoration: const InputDecoration(
                           labelText: 'Nº Nota Fiscal',
                           prefixIcon: Icon(Icons.numbers),

@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'login_page.dart';
 import 'configuracao_page.dart';
 import 'canhoto_page.dart'; // <<< importe a tela de canhotos
+import 'relatorio_page.dart'; // <<< NOVO: importe a tela de relatórios
 
 class HomePage extends StatelessWidget {
-  final int idUsuario;     // <<< adicionado
+  final int idUsuario; // <<< adicionado
   final String usuario;
 
   const HomePage({
@@ -42,8 +43,20 @@ class HomePage extends StatelessWidget {
       context,
       MaterialPageRoute(
         builder: (_) => CanhotoPage(
-          idUsuario: idUsuario, // <<< passando o id do usuário logado
-          usuarioNome: usuario, // <<< passando o nome do usuário logado
+          idUsuario: idUsuario, // passando o id do usuário logado
+          usuarioNome: usuario, // passando o nome do usuário logado
+        ),
+      ),
+    );
+  }
+
+  // >>> NOVO: abrir Relatórios
+  void _abrirRelatorios(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RelatorioPage(
+          usuarioLogado: usuario, // exibido no AppBar da página de relatório
         ),
       ),
     );
@@ -78,16 +91,15 @@ class HomePage extends StatelessWidget {
                   context,
                   icon: Icons.person,
                   label: "Canhotos",
-                  onTap: () => _abrirCanhotos(context), // <<< alterado
+                  onTap: () => _abrirCanhotos(context),
                 ),
 
+                // >>> Atualizado: abre RelatorioPage
                 _buildIcon(
                   context,
                   icon: Icons.shopping_cart,
                   label: "Relatórios",
-                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Abrir: Relatórios')),
-                  ),
+                  onTap: () => _abrirRelatorios(context),
                 ),
 
                 _buildIcon(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/services.dart'; // NEW: para Shortcuts/Actions e teclas
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'home_page.dart';
@@ -55,6 +56,10 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _usuarioController = TextEditingController();
   final TextEditingController _senhaController = TextEditingController();
 
+  // NEW: FocusNodes para controlar "next"/"done"
+  final FocusNode _usuarioFocus = FocusNode();
+  final FocusNode _senhaFocus = FocusNode();
+
   bool _loading = false;
   bool _obscurePassword = true;
   String? _erroSenha;
@@ -62,7 +67,7 @@ class _LoginPageState extends State<LoginPage> {
   String get baseUrl {
     if (kIsWeb) return 'https://localhost:7245';
     if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:5166';
+      return 'http://10.0.2.2:5166'; //http://10.0.2.2:5166
     }
     return 'http://localhost:5166';
   }
@@ -71,10 +76,13 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _usuarioController.dispose();
     _senhaController.dispose();
+    _usuarioFocus.dispose(); // NEW
+    _senhaFocus.dispose();   // NEW
     super.dispose();
   }
 
   Future<void> _login() async {
+    if (_loading) return; // evita duplo disparo
     final usuarioInput = _usuarioController.text.trim();
     final senha = _senhaController.text.trim();
 
@@ -106,7 +114,6 @@ class _LoginPageState extends State<LoginPage> {
       debugPrint('[LOGIN] status=${response.statusCode} body=${response.body}');
 
       if (response.statusCode == 200) {
-        // ✅ Apenas uma leitura do body e uma navegação
         final data = jsonDecode(response.body);
         final int idUsuario = data['id'];
         final String usuario = data['usuario'];
@@ -116,12 +123,11 @@ class _LoginPageState extends State<LoginPage> {
           context,
           MaterialPageRoute(
             builder: (_) => HomePage(
-              idUsuario: idUsuario, // HomePage agora exige idUsuario
+              idUsuario: idUsuario,
               usuario: usuario,
             ),
           ),
         );
-
       } else if (response.statusCode == 401) {
         setState(() => _erroSenha = "Usuário ou senha inválidos");
         _senhaController.clear();
@@ -165,8 +171,25 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  // NEW: Intent/Action para acionar o login por Enter
+  // Isso permite que Enter funcione mesmo quando o foco não está em um TextField
+  // (útil em web/desktop).
+  VoidCallbackIntent _loginIntent = const VoidCallbackIntent();
+  late final Map<Type, Action<Intent>> _actions = <Type, Action<Intent>>{
+    VoidCallbackIntent: CallbackAction<VoidCallbackIntent>(onInvoke: (intent) {
+      _login();
+      return null;
+    })
+  };
+
   @override
   Widget build(BuildContext context) {
+    // NEW: Mapeia Enter e NumpadEnter para nosso Intent (apenas quando não está carregando)
+    final shortcuts = <LogicalKeySet, Intent>{
+      if (!_loading) LogicalKeySet(LogicalKeyboardKey.enter): _loginIntent,
+      if (!_loading) LogicalKeySet(LogicalKeyboardKey.numpadEnter): _loginIntent,
+    };
+
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
@@ -174,80 +197,95 @@ class _LoginPageState extends State<LoginPage> {
             constraints: const BoxConstraints(maxWidth: 420),
             child: Padding(
               padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.asset(
-                      'lib/assets/img/logo_express_show.png',
-                      height: 100,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    "Login",
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Color.fromARGB(255, 0, 0, 0), // título branco
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-
-                  // USUÁRIO
-                  TextField(
-                    controller: _usuarioController,
-                    style: const TextStyle(color: Color.fromARGB(255, 0, 0, 0)),
-                    decoration: const InputDecoration(
-                      labelText: "Usuário",
-                      prefixIcon: Icon(Icons.person),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // SENHA
-                  TextField(
-                    controller: _senhaController,
-                    obscureText: _obscurePassword,
-                    onChanged: (_) => setState(() => _erroSenha = null),
-                    style: const TextStyle(color: Color.fromARGB(255, 0, 0, 0)),
-                    decoration: InputDecoration(
-                      labelText: "Senha",
-                      prefixIcon: const Icon(Icons.lock),
-                      errorText: _erroSenha,
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                          color: const Color.fromARGB(179, 0, 0, 0),
+              child: Shortcuts( // NEW
+                shortcuts: shortcuts,
+                child: Actions(   // NEW
+                  actions: _actions,
+                  child: FocusScope( // NEW: garante um escopo de foco para Shortcuts/Actions
+                    autofocus: true,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.asset(
+                            'lib/assets/img/logo_express_show.png',
+                            height: 100,
+                            fit: BoxFit.contain,
+                          ),
                         ),
-                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                        const SizedBox(height: 20),
+                        const Text(
+                          "Login",
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Color.fromARGB(255, 0, 0, 0),
+                          ),
+                        ),
+                        const SizedBox(height: 30),
 
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: FilledButton(
-                      onPressed: _loading
-                          ? null
-                          : () {
-                              debugPrint('[LOGIN] Botão "Entrar" clicado');
-                              _login();
-                            },
-                      child: _loading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2.5, color: Color.fromARGB(255, 0, 0, 0)),
-                            )
-                          : const Text("Entrar", style: TextStyle(fontSize: 16)),
+                        // USUÁRIO
+                        TextField(
+                          controller: _usuarioController,
+                          focusNode: _usuarioFocus,
+                          style: const TextStyle(color: Color.fromARGB(255, 0, 0, 0)),
+                          decoration: const InputDecoration(
+                            labelText: "Usuário",
+                            prefixIcon: Icon(Icons.person),
+                          ),
+                          textInputAction: TextInputAction.next, // NEW
+                          onSubmitted: (_) => _senhaFocus.requestFocus(), // NEW
+                        ),
+                        const SizedBox(height: 16),
+
+                        // SENHA
+                        TextField(
+                          controller: _senhaController,
+                          focusNode: _senhaFocus,
+                          obscureText: _obscurePassword,
+                          onChanged: (_) => setState(() => _erroSenha = null),
+                          onSubmitted: (_) => _login(), // NEW: Enter aqui chama login
+                          textInputAction: TextInputAction.done, // NEW
+                          style: const TextStyle(color: Color.fromARGB(255, 0, 0, 0)),
+                          decoration: InputDecoration(
+                            labelText: "Senha",
+                            prefixIcon: const Icon(Icons.lock),
+                            errorText: _erroSenha,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                                color: const Color.fromARGB(179, 0, 0, 0),
+                              ),
+                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: FilledButton(
+                            onPressed: _loading
+                                ? null
+                                : () {
+                                    debugPrint('[LOGIN] Botão "Entrar" clicado');
+                                    _login();
+                                  },
+                            child: _loading
+                                ? const SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(strokeWidth: 2.5, color: Color.fromARGB(255, 0, 0, 0)),
+                                  )
+                                : const Text("Entrar", style: TextStyle(fontSize: 16)),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
             ),
           ),
@@ -255,4 +293,9 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
+}
+
+// NEW: Intent vazio para bindar ao Shortcuts/Actions
+class VoidCallbackIntent extends Intent {
+  const VoidCallbackIntent();
 }
