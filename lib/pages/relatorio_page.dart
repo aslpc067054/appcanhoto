@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:math' as math; // <<< NOVO: para minWidth do grid
 
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
@@ -121,6 +122,9 @@ class _RelatorioPageState extends State<RelatorioPage> {
 
   final _df = DateFormat('dd/MM/yyyy HH:mm');
 
+  // <<< NOVO: controlador da barra de rolagem HORIZONTAL do grid
+  final ScrollController _hTableCtrl = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -135,6 +139,10 @@ class _RelatorioPageState extends State<RelatorioPage> {
     _notaCtrl.dispose();
     _dataIniCtrl.dispose();
     _dataFimCtrl.dispose();
+
+    // <<< NOVO: dispose do controller horizontal
+    _hTableCtrl.dispose();
+
     super.dispose();
   }
 
@@ -574,59 +582,74 @@ class _RelatorioPageState extends State<RelatorioPage> {
                         )
                       : Column(
                           children: [
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: DataTable(
-                                columns: const [
-                                  DataColumn(label: Text('Preview')),
-                                  DataColumn(label: Text('Empresa')),
-                                  DataColumn(label: Text('NF')),
-                                  DataColumn(label: Text('Data/Hora')),
-                                  DataColumn(label: Text('Ações')),
-                                ],
-                                rows: _resultados.map((r) {
-                                  final dt = _df.format(r.dataHora);
-                                  return DataRow(
-                                    cells: [
-                                      DataCell(
-                                        SizedBox(
-                                          width: 90,
-                                          height: 70,
-                                          child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(6),
-                                            child: r.thumbnail == null || r.thumbnail!.isEmpty
-                                                ? Container(
-                                                    color: Colors.black12,
-                                                    child: const Icon(Icons.image_not_supported, size: 28),
-                                                  )
-                                                : Image.memory(r.thumbnail!, fit: BoxFit.cover),
-                                          ),
-                                        ),
+                            // >>> ALTERADO: barra de rolagem horizontal + largura mínima forçada
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final double minTableWidth = math.max(constraints.maxWidth, 1100); // ajuste se quiser
+                                return Scrollbar(
+                                  controller: _hTableCtrl,
+                                  thumbVisibility: true,
+                                  notificationPredicate: (notif) => notif.metrics.axis == Axis.horizontal,
+                                  child: SingleChildScrollView(
+                                    controller: _hTableCtrl,
+                                    scrollDirection: Axis.horizontal,
+                                    child: ConstrainedBox(
+                                      constraints: BoxConstraints(minWidth: minTableWidth),
+                                      child: DataTable(
+                                        columns: const [
+                                          DataColumn(label: Text('Preview')),
+                                          DataColumn(label: Text('Empresa')),
+                                          DataColumn(label: Text('NF')),
+                                          DataColumn(label: Text('Data/Hora')),
+                                          DataColumn(label: Text('Ações')),
+                                        ],
+                                        rows: _resultados.map((r) {
+                                          final dt = _df.format(r.dataHora);
+                                          return DataRow(
+                                            cells: [
+                                              DataCell(
+                                                SizedBox(
+                                                  width: 90,
+                                                  height: 70,
+                                                  child: ClipRRect(
+                                                    borderRadius: BorderRadius.circular(6),
+                                                    child: r.thumbnail == null || r.thumbnail!.isEmpty
+                                                        ? Container(
+                                                            color: Colors.black12,
+                                                            child: const Icon(Icons.image_not_supported, size: 28),
+                                                          )
+                                                        : Image.memory(r.thumbnail!, fit: BoxFit.cover),
+                                                  ),
+                                                ),
+                                              ),
+                                              DataCell(Text(r.empresaNome)),
+                                              DataCell(Text(r.numeroNota)),
+                                              DataCell(Text(dt)),
+                                              DataCell(
+                                                Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  children: [
+                                                    IconButton(
+                                                      tooltip: 'Visualizar',
+                                                      onPressed: () => _visualizar(r),
+                                                      icon: const Icon(Icons.zoom_in),
+                                                    ),
+                                                    IconButton(
+                                                      tooltip: 'Baixar',
+                                                      onPressed: () => _baixar(r.id),
+                                                      icon: const Icon(Icons.download),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          );
+                                        }).toList(),
                                       ),
-                                      DataCell(Text(r.empresaNome)),
-                                      DataCell(Text(r.numeroNota)),
-                                      DataCell(Text(dt)),
-                                      DataCell(
-                                        Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            IconButton(
-                                              tooltip: 'Visualizar',
-                                              onPressed: () => _visualizar(r),
-                                              icon: const Icon(Icons.zoom_in),
-                                            ),
-                                            IconButton(
-                                              tooltip: 'Baixar',
-                                              onPressed: () => _baixar(r.id),
-                                              icon: const Icon(Icons.download),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                }).toList(),
-                              ),
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                             const SizedBox(height: 8),
                             Row(

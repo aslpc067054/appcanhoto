@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math; // <<< NOVO
 import 'dart:typed_data';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -21,7 +22,6 @@ class Empresa {
   Empresa({required this.id, required this.nomeFantasia, required this.status});
 
   factory Empresa.fromJson(Map<String, dynamic> j) => Empresa(
-        // aceita PascalCase e camelCase
         id: (j['Id'] ?? j['id']) is int
             ? (j['Id'] ?? j['id']) as int
             : int.parse((j['Id'] ?? j['id']).toString()),
@@ -82,7 +82,7 @@ enum OfflineOp { create, update, delete }
 
 class CanhotoQueueItem {
   final OfflineOp op;
-  final Canhoto canhoto; // quando delete, use id preenchido (se existir) ou algum marcador
+  final Canhoto canhoto;
 
   CanhotoQueueItem({required this.op, required this.canhoto});
 }
@@ -129,12 +129,16 @@ class _CanhotoPageState extends State<CanhotoPage> {
   bool _online = true;
   StreamSubscription<List<ConnectivityResult>>? _connSub;
 
-  // Feature flag: usar API (true) ou apenas memória (false)
+  // Feature flag
   static const bool _usarApi = true;
 
-  // FocusNodes para controlar foco e fechar o autocomplete
-  FocusNode? _empresaFocusNode;     // recebe o focusNode fornecido pelo Autocomplete
-  final _notaFocusNode = FocusNode(); // foco do campo de Nº da Nota
+  // FocusNodes
+  FocusNode? _empresaFocusNode;
+  final _notaFocusNode = FocusNode();
+
+  // <<< NOVO: controladores de rolagem
+  final ScrollController _pageScrollCtrl = ScrollController();
+  final ScrollController _hTableCtrl = ScrollController();
 
   String get baseUrl {
     if (kIsWeb) return 'https://localhost:7245';
@@ -160,9 +164,13 @@ class _CanhotoPageState extends State<CanhotoPage> {
   void dispose() {
     _notaCtrl.dispose();
     _empresaCtrl.dispose();
-    _notaFocusNode.dispose(); // liberar foco da NF
-    // _empresaFocusNode é gerenciado pelo Autocomplete; não chamamos dispose aqui.
+    _notaFocusNode.dispose();
     _connSub?.cancel();
+
+    // <<< NOVO
+    _pageScrollCtrl.dispose();
+    _hTableCtrl.dispose();
+
     super.dispose();
   }
 
@@ -189,13 +197,12 @@ class _CanhotoPageState extends State<CanhotoPage> {
 
   // === Persistência (Hive) ====
 
-  // Salva a fila offline em disco
   Future<void> _saveQueueToDisk() async {
     final box = Hive.box('offline_queue');
     final list = _filaOffline.map((q) {
       final c = q.canhoto;
       return {
-        'op': q.op.name, // 'create' | 'update' | 'delete'
+        'op': q.op.name,
         'canhoto': {
           'id': c.id,
           'idUsuario': c.idUsuario,
@@ -274,10 +281,9 @@ class _CanhotoPageState extends State<CanhotoPage> {
     }
   }
 
-  // Chamar no initState para carregar o que ficou salvo
   Future<void> _initPersistence() async {
     await _loadQueueFromDisk();
-    await _loadTodayListFromDisk(); // opcional (mostra os últimos do dia em cache)
+    await _loadTodayListFromDisk();
     if (mounted) setState(() {});
   }
 
@@ -308,7 +314,6 @@ class _CanhotoPageState extends State<CanhotoPage> {
     }
   }
 
-  // GET paginado: lista de metadados (sem imagem) — APENAS do usuário logado
   Future<void> _carregarCanhotosDoDia({int page = 1, int pageSize = 20}) async {
     setState(() => _carregandoHoje = true);
     try {
@@ -317,7 +322,6 @@ class _CanhotoPageState extends State<CanhotoPage> {
         final data =
             '${hoje.year.toString().padLeft(4, '0')}-${hoje.month.toString().padLeft(2, '0')}-${hoje.day.toString().padLeft(2, '0')}';
 
-        // >>> Sempre enviar idUsuario no GET para filtrar no backend
         final uri = Uri.parse(
           '$baseUrl/api/canhotos?data=$data&page=$page&pageSize=$pageSize&idUsuario=${widget.idUsuario}',
         );
@@ -335,15 +339,13 @@ class _CanhotoPageState extends State<CanhotoPage> {
                     empresaNome: (j['empresaNome'] ?? '') as String,
                     numeroNota: (j['numeroNota'] ?? '') as String,
                     dataHora: DateTime.parse((j['dataHora'] as String)),
-                    imagemBytes: Uint8List(0), // sem imagem por padrão
+                    imagemBytes: Uint8List(0),
                     pendente: false,
                   ))
               .toList();
 
-          // >>> Reforço: garante filtro local por usuário logado
           _canhotosHoje = _canhotosHoje.where((c) => c.idUsuario == widget.idUsuario).toList();
 
-          // persiste a lista do dia em disco
           await _saveTodayListToDisk();
         } else {
           _showSnack('Erro ao carregar canhotos (${resp.statusCode})');
@@ -364,11 +366,9 @@ class _CanhotoPageState extends State<CanhotoPage> {
       final ImagePicker picker = ImagePicker();
       XFile? file;
       if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS)) {
-        // Mobile: tenta câmera; se cancelar, abre galeria
         file = await picker.pickImage(source: ImageSource.camera, maxWidth: 1600, maxHeight: 1600, imageQuality: 80);
         file ??= await picker.pickImage(source: ImageSource.gallery, maxWidth: 1600, maxHeight: 1600, imageQuality: 80);
       } else {
-        // Web/desktop → file picker
         file = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1600, maxHeight: 1600, imageQuality: 80);
       }
       if (file != null) {
@@ -419,7 +419,6 @@ class _CanhotoPageState extends State<CanhotoPage> {
         );
         _canhotosHoje[_editingIndex!] = edited;
 
-        // Atualiza também a fila offline (update)
         final idxQ = _filaOffline.indexWhere((q) => q.canhoto == old);
         if (idxQ >= 0) {
           _filaOffline[idxQ] = CanhotoQueueItem(op: OfflineOp.update, canhoto: edited);
@@ -435,7 +434,6 @@ class _CanhotoPageState extends State<CanhotoPage> {
 
       if (_usarApi && _online) {
         if (_editingId == null) {
-          // CREATE
           final uri = Uri.parse('$baseUrl/api/canhotos');
           final body = {
             'idUsuario': widget.idUsuario,
@@ -464,7 +462,6 @@ class _CanhotoPageState extends State<CanhotoPage> {
             _showSnack('Erro ao salvar (${resp.statusCode})');
           }
         } else {
-          // UPDATE
           final uri = Uri.parse('$baseUrl/api/canhotos/$_editingId');
           final body = {
             'idEmpresa': _empresaSelecionada!.id,
@@ -491,7 +488,6 @@ class _CanhotoPageState extends State<CanhotoPage> {
           }
         }
       } else {
-        // OFFLINE → cria ou edita pendente
         if (_editingId == null) {
           final pendente = Canhoto(
             id: null,
@@ -510,7 +506,6 @@ class _CanhotoPageState extends State<CanhotoPage> {
           _showSnack('Salvo localmente (offline).');
           _limparForm();
         } else {
-          // Edição offline de item já sincronizado → enfileira update
           final idx = _canhotosHoje.indexWhere((c) => c.id == _editingId);
           if (idx >= 0) {
             final edited = _canhotosHoje[idx].copyWith(
@@ -519,7 +514,7 @@ class _CanhotoPageState extends State<CanhotoPage> {
               numeroNota: _notaCtrl.text.trim(),
               imagemBytes: _imagemAtual!,
               dataHora: DateTime.now(),
-              pendente: true, // marcar visualmente
+              pendente: true,
             );
             _canhotosHoje[idx] = edited;
             _filaOffline.add(CanhotoQueueItem(op: OfflineOp.update, canhoto: edited));
@@ -555,7 +550,6 @@ class _CanhotoPageState extends State<CanhotoPage> {
     );
     if (confirmar != true) return;
 
-    // Pendente: remove da fila e da lista
     if (c.pendente && c.id == null) {
       _filaOffline.removeWhere((q) => q.canhoto == c);
       await _saveQueueToDisk();
@@ -566,7 +560,6 @@ class _CanhotoPageState extends State<CanhotoPage> {
       return;
     }
 
-    // Com API online
     if (_usarApi && _online && c.id != null) {
       try {
         final uri = Uri.parse('$baseUrl/api/canhotos/${c.id}');
@@ -583,7 +576,6 @@ class _CanhotoPageState extends State<CanhotoPage> {
         _showSnack('Falha ao excluir.');
       }
     } else {
-      // Offline → enfileira exclusão
       _filaOffline.add(CanhotoQueueItem(op: OfflineOp.delete, canhoto: c));
       await _saveQueueToDisk();
       _canhotosHoje.remove(c);
@@ -595,7 +587,6 @@ class _CanhotoPageState extends State<CanhotoPage> {
 
   Future<void> _tentarSincronizarFila() async {
     if (!_usarApi || !_online) return;
-    // Processa em ordem de chegada
     final List<CanhotoQueueItem> processados = [];
     for (final item in _filaOffline) {
       try {
@@ -611,7 +602,6 @@ class _CanhotoPageState extends State<CanhotoPage> {
           if (resp.statusCode == 201 || resp.statusCode == 200) {
             final j = jsonDecode(resp.body) as Map<String, dynamic>;
             final novoId = j['id'] is int ? j['id'] : int.parse(j['id'].toString());
-            // atualiza na lista (o mesmo objeto referenciado na fila)
             final idx = _canhotosHoje.indexWhere((c) => c == item.canhoto);
             if (idx >= 0) {
               _canhotosHoje[idx] = _canhotosHoje[idx].copyWith(
@@ -623,7 +613,6 @@ class _CanhotoPageState extends State<CanhotoPage> {
             processados.add(item);
           }
         } else if (item.op == OfflineOp.update) {
-          // precisa de id; se não tiver, ignore
           if (item.canhoto.id == null) continue;
           final uri = Uri.parse('$baseUrl/api/canhotos/${item.canhoto.id}');
           final body = {
@@ -641,7 +630,6 @@ class _CanhotoPageState extends State<CanhotoPage> {
           }
         } else if (item.op == OfflineOp.delete) {
           if (item.canhoto.id == null) {
-            // era pendente: já removido localmente
             processados.add(item);
           } else {
             final uri = Uri.parse('$baseUrl/api/canhotos/${item.canhoto.id}');
@@ -655,7 +643,6 @@ class _CanhotoPageState extends State<CanhotoPage> {
         // mantém na fila para próxima tentativa
       }
     }
-    // remove processados e persiste
     _filaOffline.removeWhere((e) => processados.contains(e));
     await _saveQueueToDisk();
     await _saveTodayListToDisk();
@@ -696,293 +683,327 @@ class _CanhotoPageState extends State<CanhotoPage> {
         ],
       ),
       backgroundColor: isDark ? Colors.black : null,
+
+      // Página com Slivers + Scrollbar vertical da página
       body: RefreshIndicator(
         onRefresh: () async {
           await _carregarEmpresas();
           await _carregarCanhotosDoDia();
         },
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            // ===== FORM =====
-            Card(
-              color: isDark ? const Color(0xFF121212) : null,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Form(
-                  key: _formKey,
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
-                  child: Column(
-                    children: [
-                      // Empresa (Autocomplete)
-                      _carregandoEmpresas
-                          ? const LinearProgressIndicator()
-                          : Autocomplete<Empresa>(
-                              displayStringForOption: (e) => e.nomeFantasia,
-                              optionsBuilder: (TextEditingValue t) {
-                                if (t.text.isEmpty) {
-                                  return _empresasAtivas;
-                                }
-                                final txt = t.text.toLowerCase();
-                                return _empresasAtivas.where((e) => e.nomeFantasia.toLowerCase().startsWith(txt));
-                              },
-                              fieldViewBuilder: (ctx, controller, focus, onFieldSubmit) {
-                                _empresaFocusNode = focus; // guardamos o FocusNode do campo
-                                controller.text = _empresaCtrl.text;
-                                controller.selection = _empresaCtrl.selection;
-                                controller.addListener(() {
-                                  _empresaCtrl.value = controller.value;
-                                });
-                                return TextFormField(
-                                  controller: controller,
-                                  focusNode: focus,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Empresa (nome fantasia)',
-                                    prefixIcon: Icon(Icons.apartment),
-                                  ),
-                                  validator: (_) => _empresaSelecionada == null ? 'Selecione a empresa' : null,
-                                  textInputAction: TextInputAction.next,
-                                  onFieldSubmitted: (_) => _notaFocusNode.requestFocus(), // pular para NF ao pressionar enter
-                                );
-                              },
-                              onSelected: (e) {
-                                _empresaSelecionada = e;
-                                _empresaCtrl.text = e.nomeFantasia;
-
-                                // fechar o overlay desfocando o campo
-                                _empresaFocusNode?.unfocus();
-
-                                // focar no campo da NF
-                                _notaFocusNode.requestFocus();
-
-                                setState(() {});
-                              },
-                              optionsViewBuilder: (ctx, onSelected, options) {
-                                return Align(
-                                  alignment: Alignment.topLeft,
-                                  child: Material(
-                                    elevation: 4,
-                                    child: SizedBox(
-                                      height: 240,
-                                      child: ListView.builder(
-                                        padding: EdgeInsets.zero,
-                                        itemCount: options.length,
-                                        itemBuilder: (_, i) {
-                                          final e = options.elementAt(i);
-                                          return ListTile(
-                                            title: Text(e.nomeFantasia),
-                                            onTap: () {
-                                              onSelected(e);
-                                              FocusScope.of(ctx).unfocus();
-                                              _notaFocusNode.requestFocus();
-                                            },
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                      const SizedBox(height: 12),
-
-                      // Nº Nota Fiscal
-                      TextFormField(
-                        controller: _notaCtrl,
-                        focusNode: _notaFocusNode, // receber foco após selecionar empresa
-                        decoration: const InputDecoration(
-                          labelText: 'Nº Nota Fiscal',
-                          prefixIcon: Icon(Icons.numbers),
-                        ),
-                        validator: (v) => (v == null || v.trim().isEmpty) ? 'Informe o nº da nota' : null,
-                      ),
-                      const SizedBox(height: 12),
-
-                      // Imagem + botão
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              height: 140,
-                              decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF1A1A1A) : Colors.blue.shade50,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: isDark ? Colors.white10 : Colors.blue.shade100),
-                              ),
-                              child: _imagemAtual == null
-                                  ? const Center(child: Text('Nenhuma imagem selecionada'))
-                                  : ClipRRect(
-                                      borderRadius: BorderRadius.circular(12),
-                                      child: Image.memory(_imagemAtual!, fit: BoxFit.cover, width: double.infinity),
-                                    ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            children: [
-                              FilledButton.icon(
-                                onPressed: _tirarOuSelecionarFoto,
-                                icon: const Icon(Icons.photo_camera),
-                                label: const Text('Foto/Selecionar'),
-                              ),
-                              const SizedBox(height: 8),
-                              OutlinedButton.icon(
-                                onPressed: () => setState(() => _imagemAtual = null),
-                                icon: const Icon(Icons.clear),
-                                label: const Text('Limpar imagem'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-
-                      Row(
-                        children: [
-                          Expanded(
-                            child: FilledButton.icon(
-                              onPressed: _salvando ? null : _salvar,
-                              icon: _salvando
-                                  ? const SizedBox(
-                                      width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                  : const Icon(Icons.save),
-                              label: Text(_editingId == null ? 'Salvar' : 'Atualizar'),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: _salvando ? null : _limparForm,
-                              icon: const Icon(Icons.cleaning_services_outlined),
-                              label: const Text('Limpar'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+        child: Scrollbar(
+          controller: _pageScrollCtrl,
+          thumbVisibility: true, // <<< sempre visível
+          child: CustomScrollView(
+            controller: _pageScrollCtrl,
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: _buildFormCard(isDark),
+                ),
+              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+              SliverFillRemaining(
+                hasScrollBody: true,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  child: Card(
+                    color: isDark ? const Color(0xFF121212) : null,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: _carregandoHoje
+                          ? const Center(child: CircularProgressIndicator())
+                          : _buildDataTableWithForcedHorizontalScroll(context), // <<< NOVO
+                    ),
                   ),
                 ),
               ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // ===== GRID DO DIA =====
-            Card(
-              color: isDark ? const Color(0xFF121212) : null,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: _carregandoHoje
-                    ? const Padding(
-                        padding: EdgeInsets.all(24.0),
-                        child: Center(child: CircularProgressIndicator()),
-                      )
-                    : _buildDataTable(context),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildDataTable(BuildContext context) {
+  // ======= UI Helpers =======
+
+  Widget _buildFormCard(bool isDark) {
+    return Card(
+      color: isDark ? const Color(0xFF121212) : null,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: Column(
+            children: [
+              // Empresa (Autocomplete)
+              _carregandoEmpresas
+                  ? const LinearProgressIndicator()
+                  : Autocomplete<Empresa>(
+                      displayStringForOption: (e) => e.nomeFantasia,
+                      optionsBuilder: (TextEditingValue t) {
+                        if (t.text.isEmpty) {
+                          return _empresasAtivas;
+                        }
+                        final txt = t.text.toLowerCase();
+                        return _empresasAtivas.where((e) => e.nomeFantasia.toLowerCase().startsWith(txt));
+                      },
+                      fieldViewBuilder: (ctx, controller, focus, onFieldSubmit) {
+                        _empresaFocusNode = focus;
+                        controller.text = _empresaCtrl.text;
+                        controller.selection = _empresaCtrl.selection;
+                        controller.addListener(() {
+                          _empresaCtrl.value = controller.value;
+                        });
+                        return TextFormField(
+                          controller: controller,
+                          focusNode: focus,
+                          decoration: const InputDecoration(
+                            labelText: 'Empresa (nome fantasia)',
+                            prefixIcon: Icon(Icons.apartment),
+                          ),
+                          validator: (_) => _empresaSelecionada == null ? 'Selecione a empresa' : null,
+                          textInputAction: TextInputAction.next,
+                          onFieldSubmitted: (_) => _notaFocusNode.requestFocus(),
+                        );
+                      },
+                      onSelected: (e) {
+                        _empresaSelecionada = e;
+                        _empresaCtrl.text = e.nomeFantasia;
+                        _empresaFocusNode?.unfocus();
+                        _notaFocusNode.requestFocus();
+                        setState(() {});
+                      },
+                      optionsViewBuilder: (ctx, onSelected, options) {
+                        return Align(
+                          alignment: Alignment.topLeft,
+                          child: Material(
+                            elevation: 4,
+                            child: SizedBox(
+                              height: 240,
+                              child: ListView.builder(
+                                padding: EdgeInsets.zero,
+                                itemCount: options.length,
+                                itemBuilder: (_, i) {
+                                  final e = options.elementAt(i);
+                                  return ListTile(
+                                    title: Text(e.nomeFantasia),
+                                    onTap: () {
+                                      onSelected(e);
+                                      FocusScope.of(ctx).unfocus();
+                                      _notaFocusNode.requestFocus();
+                                    },
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+              const SizedBox(height: 12),
+
+              // Nº Nota Fiscal
+              TextFormField(
+                controller: _notaCtrl,
+                focusNode: _notaFocusNode,
+                decoration: const InputDecoration(
+                  labelText: 'Nº Nota Fiscal',
+                  prefixIcon: Icon(Icons.numbers),
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty) ? 'Informe o nº da nota' : null,
+              ),
+              const SizedBox(height: 12),
+
+              // Imagem + botão
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 140,
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1A1A1A) : Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: isDark ? Colors.white10 : Colors.blue.shade100),
+                      ),
+                      child: _imagemAtual == null
+                          ? const Center(child: Text('Nenhuma imagem selecionada'))
+                          : ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.memory(_imagemAtual!, fit: BoxFit.cover, width: double.infinity),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    children: [
+                      FilledButton.icon(
+                        onPressed: _tirarOuSelecionarFoto,
+                        icon: const Icon(Icons.photo_camera),
+                        label: const Text('Foto/Selecionar'),
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: () => setState(() => _imagemAtual = null),
+                        icon: const Icon(Icons.clear),
+                        label: const Text('Limpar imagem'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _salvando ? null : _salvar,
+                      icon: _salvando
+                          ? const SizedBox(
+                              width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.save),
+                      label: Text(_editingId == null ? 'Salvar' : 'Atualizar'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _salvando ? null : _limparForm,
+                      icon: const Icon(Icons.cleaning_services_outlined),
+                      label: const Text('Limpar'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// <<< NOVO: Força rolagem HORIZONTAL com barra visível e largura mínima da tabela
+  Widget _buildDataTableWithForcedHorizontalScroll(BuildContext context) {
     if (_canhotosHoje.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Center(child: Text('Nenhum canhoto cadastrado hoje.')),
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text('Nenhum canhoto cadastrado hoje.'),
+        ),
       );
     }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columns: const [
-          DataColumn(label: Text('Preview')),
-          DataColumn(label: Text('Empresa')),
-          DataColumn(label: Text('NF')),
-          DataColumn(label: Text('Data/Hora')),
-          DataColumn(label: Text('Status')),
-          DataColumn(label: Text('Ações')),
-        ],
-        rows: _canhotosHoje.map((c) {
-          final dt =
-              '${c.dataHora.day.toString().padLeft(2, '0')}/${c.dataHora.month.toString().padLeft(2, '0')}/${c.dataHora.year} '
-              '${c.dataHora.hour.toString().padLeft(2, '0')}:${c.dataHora.minute.toString().padLeft(2, '0')}';
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Define uma largura mínima para a tabela, para garantir overflow horizontal
+        final double minTableWidth = math.max(constraints.maxWidth, 1100); // ajuste se quiser (ex.: 1000/1200)
 
-          return DataRow(
-            cells: [
-              DataCell(
-                SizedBox(
-                  width: 90,
-                  height: 70,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: c.imagemBytes.isEmpty
-                        ? Container(
-                            color: Colors.black12,
-                            child: const Icon(Icons.image_not_supported, size: 28),
-                          )
-                        : Image.memory(c.imagemBytes, fit: BoxFit.cover),
-                  ),
-                ),
-              ),
-              DataCell(Text(c.empresaNome)),
-              DataCell(Text(c.numeroNota)),
-              DataCell(Text(dt)),
-              DataCell(
-                Chip(
-                  label: Text(c.pendente ? 'PENDENTE' : 'SINCRONIZADO'),
-                  backgroundColor: c.pendente ? Colors.orange : Colors.green,
-                  labelStyle: const TextStyle(color: Colors.white),
-                ),
-              ),
-              DataCell(
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      tooltip: 'Editar',
-                      icon: const Icon(Icons.edit),
-                      color: isDark ? Colors.white : Colors.blueGrey,
-                      onPressed: () {
-                        // carregar form
-                        _empresaSelecionada = _empresasAtivas.firstWhere(
-                          (e) => e.id == c.idEmpresa,
-                          orElse: () => Empresa(id: c.idEmpresa, nomeFantasia: c.empresaNome, status: 0),
-                        );
-                        _empresaCtrl.text = _empresaSelecionada!.nomeFantasia;
-                        _notaCtrl.text = c.numeroNota;
-                        _imagemAtual = c.imagemBytes.isEmpty ? null : c.imagemBytes;
+        return Scrollbar(
+          controller: _hTableCtrl,
+          thumbVisibility: true, // <<< barra de rolagem horizontal visível
+          notificationPredicate: (notif) => notif.metrics.axis == Axis.horizontal,
+          child: SingleChildScrollView(
+            controller: _hTableCtrl,
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: minTableWidth),
+              child: DataTable(
+                // ajustes cosméticos opcionais
+                columnSpacing: 24,
+                headingRowHeight: 48,
+                // dataRowMinHeight: 48, // se quiser fixar
+                columns: const [
+                  DataColumn(label: Text('Preview')),
+                  DataColumn(label: Text('Empresa')),
+                  DataColumn(label: Text('NF')),
+                  DataColumn(label: Text('Data/Hora')),
+                  DataColumn(label: Text('Status')),
+                  DataColumn(label: Text('Ações')),
+                ],
+                rows: _canhotosHoje.map((c) {
+                  final dt =
+                      '${c.dataHora.day.toString().padLeft(2, '0')}/${c.dataHora.month.toString().padLeft(2, '0')}/${c.dataHora.year} '
+                      '${c.dataHora.hour.toString().padLeft(2, '0')}:${c.dataHora.minute.toString().padLeft(2, '0')}';
 
-                        if (c.id != null) {
-                          _editingId = c.id;
-                          _editingIndex = null;
-                        } else {
-                          _editingId = null;
-                          _editingIndex = _canhotosHoje.indexOf(c);
-                        }
-                        setState(() {});
-                      },
-                    ),
-                    const SizedBox(width: 6),
-                    IconButton(
-                      tooltip: 'Excluir',
-                      icon: const Icon(Icons.delete_outline),
-                      color: Colors.redAccent,
-                      onPressed: () => _excluir(c),
-                    ),
-                  ],
-                ),
+                  return DataRow(
+                    cells: [
+                      DataCell(
+                        SizedBox(
+                          width: 90,
+                          height: 48,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: c.imagemBytes.isEmpty
+                                ? Container(
+                                    color: Colors.black12,
+                                    child: const Icon(Icons.image_not_supported, size: 28),
+                                  )
+                                : Image.memory(c.imagemBytes, fit: BoxFit.cover),
+                          ),
+                        ),
+                      ),
+                      DataCell(Text(c.empresaNome)),
+                      DataCell(Text(c.numeroNota)),
+                      DataCell(Text(dt)),
+                      DataCell(
+                        Chip(
+                          label: Text(c.pendente ? 'PENDENTE' : 'SINCRONIZADO'),
+                          backgroundColor: c.pendente ? Colors.orange : Colors.green,
+                          labelStyle: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      DataCell(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              tooltip: 'Editar',
+                              icon: const Icon(Icons.edit),
+                              color: isDark ? Colors.white : Colors.blueGrey,
+                              onPressed: () {
+                                _empresaSelecionada = _empresasAtivas.firstWhere(
+                                  (e) => e.id == c.idEmpresa,
+                                  orElse: () => Empresa(id: c.idEmpresa, nomeFantasia: c.empresaNome, status: 0),
+                                );
+                                _empresaCtrl.text = _empresaSelecionada!.nomeFantasia;
+                                _notaCtrl.text = c.numeroNota;
+                                _imagemAtual = c.imagemBytes.isEmpty ? null : c.imagemBytes;
+
+                                if (c.id != null) {
+                                  _editingId = c.id;
+                                  _editingIndex = null;
+                                } else {
+                                  _editingId = null;
+                                  _editingIndex = _canhotosHoje.indexOf(c);
+                                }
+                                setState(() {});
+                              },
+                            ),
+                            const SizedBox(width: 6),
+                            IconButton(
+                              tooltip: 'Excluir',
+                              icon: const Icon(Icons.delete_outline),
+                              color: Colors.redAccent,
+                              onPressed: () => _excluir(c),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
               ),
-            ],
-          );
-        }).toList(),
-      ),
+            ),
+          ),
+        );
+      },
     );
   }
 

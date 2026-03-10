@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
-import 'package:flutter/services.dart'; // NEW: para Shortcuts/Actions e teclas
+import 'package:flutter/services.dart'; // Shortcuts/Actions e teclas
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'home_page.dart';
@@ -9,13 +9,26 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final darkTheme = ThemeData(
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: Colors.black,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: Colors.blue,
-        brightness: Brightness.dark,
-      ),
       useMaterial3: true,
+      brightness: Brightness.dark,
+
+      // ColorScheme realmente escuro
+      colorScheme: const ColorScheme.dark(
+        primary: Colors.blueAccent,
+        secondary: Colors.blueAccent,
+        surface: Colors.black,      // superfícies (cards, sheets, etc.)
+        background: Colors.black,   // fundo
+        onSurface: Colors.white,
+        onBackground: Colors.white,
+      ),
+
+      // Redundâncias úteis para evitar qualquer superfície clara
+      scaffoldBackgroundColor: Colors.black,
+      canvasColor: Colors.black,
+      cardColor: const Color(0xFF121212),
+      dialogBackgroundColor: const Color(0xFF121212),
+
+      // Inputs coerentes com dark
       inputDecorationTheme: const InputDecorationTheme(
         labelStyle: TextStyle(color: Colors.white70),
         hintStyle: TextStyle(color: Colors.white60),
@@ -32,15 +45,21 @@ class MyApp extends StatelessWidget {
           borderSide: BorderSide(color: Colors.redAccent),
         ),
         prefixIconColor: Colors.white70,
+        suffixIconColor: Colors.white70,
+        iconColor: Colors.white70,
       ),
+
       textTheme: const TextTheme(
         bodyMedium: TextStyle(color: Colors.white),
       ),
+      iconTheme: const IconThemeData(color: Colors.white70),
     );
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: darkTheme,
+      // Força o dark mode independente do SO/navegador
+      themeMode: ThemeMode.dark,
+      theme: darkTheme, // (poderia ser colocado em darkTheme também)
       home: const LoginPage(),
     );
   }
@@ -56,7 +75,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _usuarioController = TextEditingController();
   final TextEditingController _senhaController = TextEditingController();
 
-  // NEW: FocusNodes para controlar "next"/"done"
+  // FocusNodes para controlar "next"/"done"
   final FocusNode _usuarioFocus = FocusNode();
   final FocusNode _senhaFocus = FocusNode();
 
@@ -67,7 +86,7 @@ class _LoginPageState extends State<LoginPage> {
   String get baseUrl {
     if (kIsWeb) return 'https://localhost:7245';
     if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:5166'; //http://10.0.2.2:5166
+      return 'http://10.0.2.2:5166';
     }
     return 'http://localhost:5166';
   }
@@ -76,8 +95,8 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _usuarioController.dispose();
     _senhaController.dispose();
-    _usuarioFocus.dispose(); // NEW
-    _senhaFocus.dispose();   // NEW
+    _usuarioFocus.dispose();
+    _senhaFocus.dispose();
     super.dispose();
   }
 
@@ -171,9 +190,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // NEW: Intent/Action para acionar o login por Enter
-  // Isso permite que Enter funcione mesmo quando o foco não está em um TextField
-  // (útil em web/desktop).
+  // Intent/Action para acionar o login por Enter
   VoidCallbackIntent _loginIntent = const VoidCallbackIntent();
   late final Map<Type, Action<Intent>> _actions = <Type, Action<Intent>>{
     VoidCallbackIntent: CallbackAction<VoidCallbackIntent>(onInvoke: (intent) {
@@ -184,24 +201,26 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    // NEW: Mapeia Enter e NumpadEnter para nosso Intent (apenas quando não está carregando)
+    // Mapeia Enter e NumpadEnter para nosso Intent (quando não está carregando)
     final shortcuts = <LogicalKeySet, Intent>{
       if (!_loading) LogicalKeySet(LogicalKeyboardKey.enter): _loginIntent,
       if (!_loading) LogicalKeySet(LogicalKeyboardKey.numpadEnter): _loginIntent,
     };
 
     return Scaffold(
+      // Garante fundo preto no container do Scaffold
+      backgroundColor: Colors.black,
       body: Center(
         child: SingleChildScrollView(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
             child: Padding(
               padding: const EdgeInsets.all(24.0),
-              child: Shortcuts( // NEW
+              child: Shortcuts(
                 shortcuts: shortcuts,
-                child: Actions(   // NEW
+                child: Actions(
                   actions: _actions,
-                  child: FocusScope( // NEW: garante um escopo de foco para Shortcuts/Actions
+                  child: FocusScope(
                     autofocus: true,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -215,12 +234,14 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         const SizedBox(height: 20),
+
+                        // Título branco no dark mode
                         const Text(
                           "Login",
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
-                            color: Color.fromARGB(255, 0, 0, 0),
+                            color: Colors.white,
                           ),
                         ),
                         const SizedBox(height: 30),
@@ -229,13 +250,13 @@ class _LoginPageState extends State<LoginPage> {
                         TextField(
                           controller: _usuarioController,
                           focusNode: _usuarioFocus,
-                          style: const TextStyle(color: Color.fromARGB(255, 0, 0, 0)),
+                          style: const TextStyle(color: Colors.white),
                           decoration: const InputDecoration(
                             labelText: "Usuário",
                             prefixIcon: Icon(Icons.person),
                           ),
-                          textInputAction: TextInputAction.next, // NEW
-                          onSubmitted: (_) => _senhaFocus.requestFocus(), // NEW
+                          textInputAction: TextInputAction.next,
+                          onSubmitted: (_) => _senhaFocus.requestFocus(),
                         ),
                         const SizedBox(height: 16),
 
@@ -245,9 +266,9 @@ class _LoginPageState extends State<LoginPage> {
                           focusNode: _senhaFocus,
                           obscureText: _obscurePassword,
                           onChanged: (_) => setState(() => _erroSenha = null),
-                          onSubmitted: (_) => _login(), // NEW: Enter aqui chama login
-                          textInputAction: TextInputAction.done, // NEW
-                          style: const TextStyle(color: Color.fromARGB(255, 0, 0, 0)),
+                          onSubmitted: (_) => _login(),
+                          textInputAction: TextInputAction.done,
+                          style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
                             labelText: "Senha",
                             prefixIcon: const Icon(Icons.lock),
@@ -255,7 +276,7 @@ class _LoginPageState extends State<LoginPage> {
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                                color: const Color.fromARGB(179, 0, 0, 0),
+                                color: Colors.white70,
                               ),
                               onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                             ),
@@ -277,7 +298,10 @@ class _LoginPageState extends State<LoginPage> {
                                 ? const SizedBox(
                                     width: 22,
                                     height: 22,
-                                    child: CircularProgressIndicator(strokeWidth: 2.5, color: Color.fromARGB(255, 0, 0, 0)),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      color: Colors.white,
+                                    ),
                                   )
                                 : const Text("Entrar", style: TextStyle(fontSize: 16)),
                           ),
@@ -295,7 +319,7 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-// NEW: Intent vazio para bindar ao Shortcuts/Actions
+// Intent vazio para bindar ao Shortcuts/Actions
 class VoidCallbackIntent extends Intent {
   const VoidCallbackIntent();
 }
