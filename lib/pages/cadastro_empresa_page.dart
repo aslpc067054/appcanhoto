@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:appcanhoto/core/api_config.dart';
 
 /// InputFormatter para telefone no formato: (99) 99999-9999
 class TelefoneInputFormatter extends TextInputFormatter {
@@ -161,13 +162,29 @@ class _CadastroEmpresaPageState extends State<CadastroEmpresaPage> {
   // ====== API CONFIG ======
   static const bool _usarApi = true; // mude para true quando a API estiver ativa
 
-  String get baseUrl {
-    if (kIsWeb) return 'https://localhost:7245'; // Web → HTTPS do seu perfil
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:5166'; // Android emulador
-    }
-    return 'http://localhost:5166'; // iOS simulador / desktop
-  }
+  // String get baseUrl {
+  //   if (kIsWeb) return 'https://localhost:7245'; // Web → HTTPS do seu perfil
+  //   if (defaultTargetPlatform == TargetPlatform.android) {
+  //     return 'http://10.0.2.2:5166'; // Android emulador
+  //   }
+  //   return 'http://localhost:5166'; // iOS simulador / desktop
+  // }
+
+  // // >>> ALTERAÇÃO AQUI: fixamos o IP/porta da sua API <<<
+  // String get baseUrl {
+  //   const host = '192.168.0.191';
+
+  //   // HTTPS (requer certificado válido para o IP configurado no Kestrel)
+  //   const httpsPort = 7245;
+  //   return 'https://$host:$httpsPort';
+
+  //   // Se preferir usar HTTP durante o dev, descomente abaixo:
+  //   // const httpPort = 5166;
+  
+  //   // return 'http://$host:$httpPort';
+  // }   
+
+    String get baseUrl => '${ApiConfig.base}/api'; 
 
   Map<String, String> get _headers => const {
         'Content-Type': 'application/json',
@@ -206,7 +223,7 @@ class _CadastroEmpresaPageState extends State<CadastroEmpresaPage> {
 
     try {
       if (_usarApi) {
-        final uri = Uri.parse('$baseUrl/api/empresas');
+        final uri = Uri.parse('$baseUrl/empresas');
         final resp = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 20));
 
         if (resp.statusCode == 200) {
@@ -268,10 +285,10 @@ class _CadastroEmpresaPageState extends State<CadastroEmpresaPage> {
       if (_usarApi) {
         http.Response resp;
         if (_editingId == null) {
-          final uri = Uri.parse('$baseUrl/api/empresas');
+          final uri = Uri.parse('$baseUrl/empresas');
           resp = await http.post(uri, headers: _headers, body: jsonEncode(payload)).timeout(const Duration(seconds: 20));
         } else {
-          final uri = Uri.parse('$baseUrl/api/empresas/$_editingId');
+          final uri = Uri.parse('$baseUrl/empresas/$_editingId');
           resp = await http.put(uri, headers: _headers, body: jsonEncode(payload)).timeout(const Duration(seconds: 20));
         }
 
@@ -333,7 +350,7 @@ class _CadastroEmpresaPageState extends State<CadastroEmpresaPage> {
     setState(() => _alterandoStatusId = e.id);
     try {
       if (_usarApi) {
-        final uri = Uri.parse('$baseUrl/api/empresas/${e.id}/status');
+        final uri = Uri.parse('$baseUrl/empresas/${e.id}/status');
         final resp = await http
             .patch(uri, headers: _headers, body: jsonEncode({'status': novoStatus}))
             .timeout(const Duration(seconds: 20));

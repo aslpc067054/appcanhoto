@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:appcanhoto/core/api_config.dart';
 
 /// Modelo simples de usuário (ajuste conforme sua API, se necessário)
 class Usuario {
@@ -52,13 +53,29 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
   int? _excluindoId; // id do usuário que está sendo excluído no momento
 
   /// Define a baseUrl conforme a plataforma (igual ao seu padrão)
-  String get baseUrl {
-    if (kIsWeb) return 'https://localhost:7245'; // Web → porta HTTPS correta
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:5166'; // Android emulador
-    }
-    return 'http://localhost:5166'; // iOS simulador / desktop
-  }
+  // String get baseUrl {
+  //   if (kIsWeb) return 'https://localhost:7245'; // Web → porta HTTPS correta
+  //   if (defaultTargetPlatform == TargetPlatform.android) {
+  //     return 'http://10.0.2.2:5166'; // Android emulador
+  //   }
+  //   return 'http://localhost:5166'; // iOS simulador / desktop
+  // }
+
+  // // >>> ALTERAÇÃO AQUI: fixamos o IP/porta da sua API <<<
+  // String get baseUrl {
+  //   const host = '192.168.0.191';
+
+  //   // HTTPS (requer certificado válido para o IP configurado no Kestrel)
+  //   const httpsPort = 7245;
+  //   return 'https://$host:$httpsPort';
+
+  //   // Se preferir usar HTTP durante o dev, descomente abaixo:
+  //   // const httpPort = 5166;
+  
+  //   // return 'http://$host:$httpPort';
+  // }  
+
+    String get baseUrl => '${ApiConfig.base}/api';
 
   Map<String, String> get _headers => const {
         'Content-Type': 'application/json',
@@ -86,7 +103,7 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
   Future<void> _carregarUsuarios() async {
     setState(() => _loadingLista = true);
     try {
-      final uri = Uri.parse('$baseUrl/api/usuarios');
+      final uri = Uri.parse('$baseUrl/usuarios');
       final resp = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 20));
 
       if (resp.statusCode == 200) {
@@ -126,13 +143,13 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
       http.Response resp;
       if (_editingId == null) {
         // CREATE
-        final uri = Uri.parse('$baseUrl/api/usuarios');
+        final uri = Uri.parse('$baseUrl/usuarios');
         resp = await http
             .post(uri, headers: _headers, body: jsonEncode(payload))
             .timeout(const Duration(seconds: 20));
       } else {
         // UPDATE
-        final uri = Uri.parse('$baseUrl/api/usuarios/$_editingId');
+        final uri = Uri.parse('$baseUrl/usuarios/$_editingId');
         resp = await http
             .put(uri, headers: _headers, body: jsonEncode(payload))
             .timeout(const Duration(seconds: 20));
@@ -165,7 +182,7 @@ class _CadastroUsuarioPageState extends State<CadastroUsuarioPage> {
   Future<void> _excluirUsuario(int id) async {
     setState(() => _excluindoId = id);
     try {
-      final uri = Uri.parse('$baseUrl/api/usuarios/$id');
+      final uri = Uri.parse('$baseUrl/usuarios/$id');
       final resp = await http.delete(uri, headers: _headers).timeout(const Duration(seconds: 20));
 
       if (resp.statusCode == 200 || resp.statusCode == 202 || resp.statusCode == 204) {

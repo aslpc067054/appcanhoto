@@ -6,6 +6,7 @@ import 'login_page.dart';
 import 'configuracao_page.dart';
 import 'canhoto_page.dart';
 import 'relatorio_page.dart';
+import 'package:appcanhoto/core/api_config.dart';
 
 class HomePage extends StatefulWidget {
   final int idUsuario;
@@ -28,7 +29,9 @@ class _HomePageState extends State<HomePage> {
   String? _erro;
 
   // >>> Ajuste para sua API
-  static const String apiBaseUrl = 'https://localhost:7245/api/permissoes';
+  //static const String apiBaseUrl = 'https://localhost:7245/api/permissoes';
+//static const String apiBaseUrl = 'https://192.168.0.191:7245/api/permissoes';
+static String get apiBaseUrl => '${ApiConfig.base}/api/permissoes';
 
   @override
   void initState() {

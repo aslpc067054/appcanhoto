@@ -4,6 +4,7 @@ import 'package:flutter/services.dart'; // Shortcuts/Actions e teclas
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'home_page.dart';
+import 'package:appcanhoto/core/api_config.dart';
 
 class MyApp extends StatelessWidget {
   @override
@@ -83,14 +84,27 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
   String? _erroSenha;
 
-  String get baseUrl {
-    if (kIsWeb) return 'https://localhost:7245';
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:5166';
-    }
-    return 'http://localhost:5166';
-  }
+  // String get baseUrl {
+  //   if (kIsWeb) return 'https://localhost:7245';
+  //   if (defaultTargetPlatform == TargetPlatform.android) {
+  //     return 'http://10.0.2.2:5166';
+  //   }
+  //   return 'http://localhost:5166';
+  // }
+  // String get baseUrl {
+  //   const host = '192.168.0.191';
 
+  //   // Se você quer usar HTTP (recomendado durante o dev):
+  //   //const httpPort = 5166;
+  //   //return 'http://$host:$httpPort';
+
+  //   // Caso queira forçar HTTPS (só se o cliente confiar no certificado):
+  //    const httpsPort = 7245;
+  //    return 'https://$host:$httpsPort';
+  // }
+  String get baseUrl => '${ApiConfig.base}/api';
+  
+  
   @override
   void dispose() {
     _usuarioController.dispose();
@@ -117,7 +131,7 @@ class _LoginPageState extends State<LoginPage> {
       _erroSenha = null;
     });
 
-    final uri = Uri.parse('$baseUrl/api/login');
+    final uri = Uri.parse('$baseUrl/login');
     debugPrint('[LOGIN] POST $uri');
     debugPrint('[LOGIN] Usuario="$usuarioInput"');
 

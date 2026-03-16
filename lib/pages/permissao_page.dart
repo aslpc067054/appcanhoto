@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:appcanhoto/core/api_config.dart';
 
 /// =====================
 /// MODELOS
@@ -52,11 +53,28 @@ class PermissaoPage extends StatefulWidget {
 
 class _PermissaoPageState extends State<PermissaoPage> {
   // >>> Mesma lógica do seu RelatorioPage <<<
-  String get baseUrl {
-    if (kIsWeb) return 'https://localhost:7245';
-    if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:5166';
-    return 'http://localhost:5166';
-  }
+  // String get baseUrl {
+  //   if (kIsWeb) return 'https://localhost:7245';
+  //   if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:5166';
+  //   return 'http://localhost:5166';
+  // }
+  
+
+  // // >>> ALTERAÇÃO AQUI: fixamos o IP/porta da sua API <<<
+  // String get baseUrl {
+  //   const host = '192.168.0.191';
+
+  //   // HTTPS (requer certificado válido para o IP configurado no Kestrel)
+  //   const httpsPort = 7245;
+  //   return 'https://$host:$httpsPort';
+
+  //   // Se preferir usar HTTP durante o dev, descomente abaixo:
+  //   // const httpPort = 5166;
+  
+  //   // return 'http://$host:$httpPort';
+  // }  
+
+  String get baseUrl => '${ApiConfig.base}/api';
 
   Map<String, String> get _headers => const {
         'Accept': 'application/json', // igual ao seu exemplo
@@ -93,7 +111,7 @@ class _PermissaoPageState extends State<PermissaoPage> {
   Future<void> _carregarUsuarios() async {
     setState(() => _loadingUsuarios = true);
     try {
-      final uri = Uri.parse('$baseUrl/api/usuarios');
+      final uri = Uri.parse('$baseUrl/usuarios');
       final resp = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 20));
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
@@ -115,7 +133,7 @@ class _PermissaoPageState extends State<PermissaoPage> {
   Future<void> _carregarPermissoes() async {
     setState(() => _loadingPermissoes = true);
     try {
-      final uri = Uri.parse('$baseUrl/api/permissoes');
+      final uri = Uri.parse('$baseUrl/permissoes');
       final resp = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 20));
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
@@ -143,7 +161,7 @@ class _PermissaoPageState extends State<PermissaoPage> {
     }
     setState(() => _salvando = true);
     try {
-      final uri = Uri.parse('$baseUrl/api/permissoes');
+      final uri = Uri.parse('$baseUrl/permissoes');
       final body = jsonEncode({'usuario': _usuarioSel!.usuario, 'permissao': _grupoSel});
       final headers = {
         ..._headers,
@@ -174,7 +192,7 @@ class _PermissaoPageState extends State<PermissaoPage> {
   Future<void> _excluir(int id) async {
     setState(() => _excluindo = true);
     try {
-      final uri = Uri.parse('$baseUrl/api/permissoes/$id');
+      final uri = Uri.parse('$baseUrl/permissoes/$id');
       final resp = await http.delete(uri, headers: _headers).timeout(const Duration(seconds: 20));
       if (resp.statusCode == 200 || resp.statusCode == 204) {
         _showSnack('Permissão excluída.');

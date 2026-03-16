@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:appcanhoto/core/api_config.dart';
 
 /// =======================================
 /// MODELOS
@@ -83,11 +84,7 @@ class RelatorioPage extends StatefulWidget {
 }
 
 class _RelatorioPageState extends State<RelatorioPage> {
-  String get baseUrl {
-    if (kIsWeb) return 'https://localhost:7245';
-    if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:5166';
-    return 'http://localhost:5166';
-  }
+  String get baseUrl => '${ApiConfig.base}/api';
 
   Map<String, String> get _headers => const {
         'Accept': 'application/json',
@@ -152,7 +149,7 @@ class _RelatorioPageState extends State<RelatorioPage> {
 
   Future<void> _carregarEmpresas() async {
     try {
-      final uri = Uri.parse('$baseUrl/api/empresas');
+      final uri = Uri.parse('$baseUrl/empresas');
       final resp = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 20));
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
@@ -172,7 +169,7 @@ class _RelatorioPageState extends State<RelatorioPage> {
   /// ATENÇÃO: mapeia para { Id, Usuario, NomeCompleto }
   Future<void> _carregarUsuarios() async {
     try {
-      final uri = Uri.parse('$baseUrl/api/usuarios');
+      final uri = Uri.parse('$baseUrl/usuarios');
       final resp = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 20));
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
@@ -205,10 +202,14 @@ class _RelatorioPageState extends State<RelatorioPage> {
       if (_empresaSel != null) params['IdEmpresa'] = '${_empresaSel!.id}';
       if (_usuarioSel != null) params['IdUsuario'] = '${_usuarioSel!.id}';
       if (_notaCtrl.text.trim().isNotEmpty) params['NumeroNota'] = _notaCtrl.text.trim();
-      if (_dataIni != null) params['DataHoraIni'] = _dataIni!.toIso8601String();
-      if (_dataFim != null) params['DataHoraFim'] = _dataFim!.toIso8601String();
 
-      final uri = Uri.parse('$baseUrl/api/canhotos/relatorio').replace(queryParameters: params);
+      // <<< AJUSTE FUSO: somar 3 horas nas datas enviadas à API
+      final dataInicioApi = _dataIni?.add(const Duration(hours: 3));
+      final dataFimApi = _dataFim?.add(const Duration(hours: 3));
+      if (dataInicioApi != null) params['DataHoraIni'] = dataInicioApi.toIso8601String();
+      if (dataFimApi != null) params['DataHoraFim'] = dataFimApi.toIso8601String();
+
+      final uri = Uri.parse('$baseUrl/canhotos/relatorio').replace(queryParameters: params);
       final resp = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 45));
       if (resp.statusCode == 200) {
         final j = jsonDecode(resp.body) as Map<String, dynamic>;
@@ -284,7 +285,7 @@ class _RelatorioPageState extends State<RelatorioPage> {
 
   Future<Uint8List?> _carregarImagemCompleta(int id) async {
     try {
-      final uri = Uri.parse('$baseUrl/api/canhotos/$id/imagem');
+      final uri = Uri.parse('$baseUrl/canhotos/$id/imagem');
       final resp = await http.get(uri).timeout(const Duration(seconds: 45));
       if (resp.statusCode == 200) {
         final ct = resp.headers['content-type'] ?? '';
@@ -340,14 +341,42 @@ class _RelatorioPageState extends State<RelatorioPage> {
     );
   }
 
-  Future<void> _baixar(int id) async {
-    final uri = Uri.parse('$baseUrl/api/canhotos/$id/imagem?download=true');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else {
-      _showSnack('Não foi possível abrir o link para download.');
-    }
+  // Future<void> _baixar(int id) async {
+  //   final uri = Uri.parse('$baseUrl/canhotos/$id/imagem?download=true');
+  //   if (await canLaunchUrl(uri)) {
+  //     await launchUrl(uri, mode: LaunchMode.externalApplication);
+  //   } else {
+  //     _showSnack('Não foi possível abrir o link para download.');
+  //   }
+  // }
+
+Future<void> _baixar(int id) async {
+  final uri = Uri.parse('$baseUrl/canhotos/$id/imagem?download=true');
+
+  try {
+    // 1) Tente abrir externamente (navegador)
+    final okExternal = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (okExternal) return;
+
+    // 2) Fallback: tente abrir em um webview in-app (se um browser externo falhar)
+    final okInApp = await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+    if (okInApp) return;
+
+    // 3) Último recurso: tente o modo padrão da plataforma
+    final okDefault = await launchUrl(uri, mode: LaunchMode.platformDefault);
+    if (okDefault) return;
+
+    _showSnack('Não foi possível abrir o link para download.');
+  } catch (e) {
+    // Logue o erro para diagnosticar (ex.: via Firebase Crashlytics ou print no debug)
+    // ignore: avoid_print
+    print('Falha ao abrir download ($uri): $e');
+
+    _showSnack('Não foi possível abrir o link para download.');
   }
+}
+
+
 
   // =========================
   // UI
@@ -604,7 +633,10 @@ class _RelatorioPageState extends State<RelatorioPage> {
                                           DataColumn(label: Text('Ações')),
                                         ],
                                         rows: _resultados.map((r) {
-                                          final dt = _df.format(r.dataHora);
+                                          // <<< AJUSTE FUSO: subtrair 3 horas para exibição
+                                          final exibicao = r.dataHora.subtract(const Duration(hours: 3));
+                                          final dt = _df.format(exibicao);
+
                                           return DataRow(
                                             cells: [
                                               DataCell(

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Para Railway (HTTPS), cleartext não é necessário, mas manter esta regra não causa erro -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">loginapi-production-25dc.up.railway.app</domain>
+    </domain-config>
+</network-security-config>

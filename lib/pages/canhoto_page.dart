@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:appcanhoto/core/api_config.dart';
 
 /// =========================
 /// MODELOS
@@ -140,11 +141,27 @@ class _CanhotoPageState extends State<CanhotoPage> {
   final ScrollController _pageScrollCtrl = ScrollController();
   final ScrollController _hTableCtrl = ScrollController();
 
-  String get baseUrl {
-    if (kIsWeb) return 'https://localhost:7245';
-    if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:5166';
-    return 'http://localhost:5166';
-  }
+  // String get baseUrl {
+  //   if (kIsWeb) return 'https://localhost:7245';
+  //   if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:5166';
+  //   return 'http://localhost:5166';
+  // }
+
+  // // >>> ALTERAÇÃO AQUI: fixamos o IP/porta da sua API <<<
+  // String get baseUrl {
+  //   const host = '192.168.0.191';
+
+  //   // HTTPS (requer certificado válido para o IP configurado no Kestrel)
+  //   const httpsPort = 7245;
+  //   return 'https://$host:$httpsPort';
+
+  //   // Se preferir usar HTTP durante o dev, descomente abaixo:
+  //   // const httpPort = 5166;
+  
+  //   // return 'http://$host:$httpPort';
+  // }  
+
+  String get baseUrl => '${ApiConfig.base}/api';
 
   Map<String, String> get _headers => const {
         'Content-Type': 'application/json',
@@ -295,7 +312,7 @@ class _CanhotoPageState extends State<CanhotoPage> {
     setState(() => _carregandoEmpresas = true);
     try {
       if (_usarApi) {
-        final uri = Uri.parse('$baseUrl/api/empresas');
+        final uri = Uri.parse('$baseUrl/empresas');
         final resp = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 20));
         if (resp.statusCode == 200) {
           final body = jsonDecode(resp.body);
@@ -323,7 +340,7 @@ class _CanhotoPageState extends State<CanhotoPage> {
             '${hoje.year.toString().padLeft(4, '0')}-${hoje.month.toString().padLeft(2, '0')}-${hoje.day.toString().padLeft(2, '0')}';
 
         final uri = Uri.parse(
-          '$baseUrl/api/canhotos?data=$data&page=$page&pageSize=$pageSize&idUsuario=${widget.idUsuario}',
+          '$baseUrl/canhotos?data=$data&page=$page&pageSize=$pageSize&idUsuario=${widget.idUsuario}',
         );
 
         final resp = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 30));
@@ -434,7 +451,7 @@ class _CanhotoPageState extends State<CanhotoPage> {
 
       if (_usarApi && _online) {
         if (_editingId == null) {
-          final uri = Uri.parse('$baseUrl/api/canhotos');
+          final uri = Uri.parse('$baseUrl/canhotos');
           final body = {
             'idUsuario': widget.idUsuario,
             'idEmpresa': _empresaSelecionada!.id,
@@ -462,7 +479,7 @@ class _CanhotoPageState extends State<CanhotoPage> {
             _showSnack('Erro ao salvar (${resp.statusCode})');
           }
         } else {
-          final uri = Uri.parse('$baseUrl/api/canhotos/$_editingId');
+          final uri = Uri.parse('$baseUrl/canhotos/$_editingId');
           final body = {
             'idEmpresa': _empresaSelecionada!.id,
             'numeroNota': _notaCtrl.text.trim(),
@@ -562,7 +579,7 @@ class _CanhotoPageState extends State<CanhotoPage> {
 
     if (_usarApi && _online && c.id != null) {
       try {
-        final uri = Uri.parse('$baseUrl/api/canhotos/${c.id}');
+        final uri = Uri.parse('$baseUrl/canhotos/${c.id}');
         final resp = await http.delete(uri, headers: _headers).timeout(const Duration(seconds: 30));
         if (resp.statusCode == 204 || resp.statusCode == 200) {
           _canhotosHoje.removeWhere((x) => x.id == c.id);
@@ -591,7 +608,7 @@ class _CanhotoPageState extends State<CanhotoPage> {
     for (final item in _filaOffline) {
       try {
         if (item.op == OfflineOp.create) {
-          final uri = Uri.parse('$baseUrl/api/canhotos');
+          final uri = Uri.parse('$baseUrl/canhotos');
           final body = {
             'idUsuario': item.canhoto.idUsuario,
             'idEmpresa': item.canhoto.idEmpresa,
@@ -614,7 +631,7 @@ class _CanhotoPageState extends State<CanhotoPage> {
           }
         } else if (item.op == OfflineOp.update) {
           if (item.canhoto.id == null) continue;
-          final uri = Uri.parse('$baseUrl/api/canhotos/${item.canhoto.id}');
+          final uri = Uri.parse('$baseUrl/canhotos/${item.canhoto.id}');
           final body = {
             'idEmpresa': item.canhoto.idEmpresa,
             'numeroNota': item.canhoto.numeroNota,
@@ -632,7 +649,7 @@ class _CanhotoPageState extends State<CanhotoPage> {
           if (item.canhoto.id == null) {
             processados.add(item);
           } else {
-            final uri = Uri.parse('$baseUrl/api/canhotos/${item.canhoto.id}');
+            final uri = Uri.parse('$baseUrl/canhotos/${item.canhoto.id}');
             final resp = await http.delete(uri, headers: _headers).timeout(const Duration(seconds: 30));
             if (resp.statusCode == 204 || resp.statusCode == 200) {
               processados.add(item);
