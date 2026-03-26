@@ -10,11 +10,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
+  shared_preferences: ^2.2.2
   http: ^1.2.0
   connectivity_plus: ^6.0.3
   image_picker: ^1.0.7
-
 
   image_gallery_saver_plus: ^4.0.1
 

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
-import 'package:flutter/services.dart'; // Shortcuts/Actions e teclas
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'home_page.dart';
 import 'package:appcanhoto/core/api_config.dart';
 
@@ -12,24 +15,18 @@ class MyApp extends StatelessWidget {
     final darkTheme = ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-
-      // ColorScheme realmente escuro
       colorScheme: const ColorScheme.dark(
         primary: Colors.blueAccent,
         secondary: Colors.blueAccent,
-        surface: Colors.black,      // superfícies (cards, sheets, etc.)
-        background: Colors.black,   // fundo
+        surface: Colors.black,
+        background: Colors.black,
         onSurface: Colors.white,
         onBackground: Colors.white,
       ),
-
-      // Redundâncias úteis para evitar qualquer superfície clara
       scaffoldBackgroundColor: Colors.black,
       canvasColor: Colors.black,
       cardColor: const Color(0xFF121212),
       dialogBackgroundColor: const Color(0xFF121212),
-
-      // Inputs coerentes com dark
       inputDecorationTheme: const InputDecorationTheme(
         labelStyle: TextStyle(color: Colors.white70),
         hintStyle: TextStyle(color: Colors.white60),
@@ -49,7 +46,6 @@ class MyApp extends StatelessWidget {
         suffixIconColor: Colors.white70,
         iconColor: Colors.white70,
       ),
-
       textTheme: const TextTheme(
         bodyMedium: TextStyle(color: Colors.white),
       ),
@@ -58,9 +54,8 @@ class MyApp extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      // Força o dark mode independente do SO/navegador
       themeMode: ThemeMode.dark,
-      theme: darkTheme, // (poderia ser colocado em darkTheme também)
+      theme: darkTheme,
       home: const LoginPage(),
     );
   }
@@ -76,7 +71,6 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _usuarioController = TextEditingController();
   final TextEditingController _senhaController = TextEditingController();
 
-  // FocusNodes para controlar "next"/"done"
   final FocusNode _usuarioFocus = FocusNode();
   final FocusNode _senhaFocus = FocusNode();
 
@@ -84,27 +78,33 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscurePassword = true;
   String? _erroSenha;
 
-  // String get baseUrl {
-  //   if (kIsWeb) return 'https://localhost:7245';
-  //   if (defaultTargetPlatform == TargetPlatform.android) {
-  //     return 'http://10.0.2.2:5166';
-  //   }
-  //   return 'http://localhost:5166';
-  // }
-  // String get baseUrl {
-  //   const host = '192.168.0.191';
+  bool _memorizar = false; // ✅ checkbox ativado
 
-  //   // Se você quer usar HTTP (recomendado durante o dev):
-  //   //const httpPort = 5166;
-  //   //return 'http://$host:$httpPort';
-
-  //   // Caso queira forçar HTTPS (só se o cliente confiar no certificado):
-  //    const httpsPort = 7245;
-  //    return 'https://$host:$httpsPort';
-  // }
   String get baseUrl => '${ApiConfig.base}/api';
-  
-  
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarCredenciais();
+  }
+
+  // ✅ Preenche usuário e senha, MAS NÃO faz auto-login
+  Future<void> _carregarCredenciais() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    final user = prefs.getString('usuario');
+    final pass = prefs.getString('senha');
+    final remember = prefs.getBool('memorizar') ?? false;
+
+    if (remember && user != null && pass != null) {
+      setState(() {
+        _memorizar = true;
+        _usuarioController.text = user;
+        _senhaController.text = pass;
+      });
+    }
+  }
+
   @override
   void dispose() {
     _usuarioController.dispose();
@@ -115,7 +115,8 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _login() async {
-    if (_loading) return; // evita duplo disparo
+    if (_loading) return;
+
     final usuarioInput = _usuarioController.text.trim();
     final senha = _senhaController.text.trim();
 
@@ -133,7 +134,6 @@ class _LoginPageState extends State<LoginPage> {
 
     final uri = Uri.parse('$baseUrl/login');
     debugPrint('[LOGIN] POST $uri');
-    debugPrint('[LOGIN] Usuario="$usuarioInput"');
 
     try {
       final response = await http
@@ -144,14 +144,25 @@ class _LoginPageState extends State<LoginPage> {
           )
           .timeout(const Duration(seconds: 15));
 
-      debugPrint('[LOGIN] status=${response.statusCode} body=${response.body}');
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final int idUsuario = data['id'];
-        final String usuario = data['usuario'];
+        final idUsuario = data['id'];
+        final usuario = data['usuario'];
+
+        // ✅ Salva ou limpa credenciais
+        final prefs = await SharedPreferences.getInstance();
+        if (_memorizar) {
+          await prefs.setString('usuario', usuarioInput);
+          await prefs.setString('senha', senha);
+          await prefs.setBool('memorizar', true);
+        } else {
+          await prefs.remove('usuario');
+          await prefs.remove('senha');
+          await prefs.setBool('memorizar', false);
+        }
 
         if (!mounted) return;
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -164,6 +175,7 @@ class _LoginPageState extends State<LoginPage> {
       } else if (response.statusCode == 401) {
         setState(() => _erroSenha = "Usuário ou senha inválidos");
         _senhaController.clear();
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text("Usuário ou senha inválidos"),
@@ -175,24 +187,7 @@ class _LoginPageState extends State<LoginPage> {
           SnackBar(content: Text("Erro ${response.statusCode}: ${response.body}")),
         );
       }
-    } on http.ClientException catch (e) {
-      debugPrint('[LOGIN] ClientException: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Falha de conexão (ClientException)"),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } on FormatException catch (e) {
-      debugPrint('[LOGIN] FormatException: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Resposta inválida da API"),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } on Exception catch (e) {
-      debugPrint('[LOGIN] Exception: $e');
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Erro ao conectar na API"),
@@ -204,10 +199,9 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // Intent/Action para acionar o login por Enter
   VoidCallbackIntent _loginIntent = const VoidCallbackIntent();
   late final Map<Type, Action<Intent>> _actions = <Type, Action<Intent>>{
-    VoidCallbackIntent: CallbackAction<VoidCallbackIntent>(onInvoke: (intent) {
+    VoidCallbackIntent: CallbackAction<VoidCallbackIntent>(onInvoke: (_) {
       _login();
       return null;
     })
@@ -215,14 +209,12 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Mapeia Enter e NumpadEnter para nosso Intent (quando não está carregando)
     final shortcuts = <LogicalKeySet, Intent>{
       if (!_loading) LogicalKeySet(LogicalKeyboardKey.enter): _loginIntent,
       if (!_loading) LogicalKeySet(LogicalKeyboardKey.numpadEnter): _loginIntent,
     };
 
     return Scaffold(
-      // Garante fundo preto no container do Scaffold
       backgroundColor: Colors.black,
       body: Center(
         child: SingleChildScrollView(
@@ -249,7 +241,6 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         const SizedBox(height: 20),
 
-                        // Título branco no dark mode
                         const Text(
                           "Login",
                           style: TextStyle(
@@ -258,9 +249,9 @@ class _LoginPageState extends State<LoginPage> {
                             color: Colors.white,
                           ),
                         ),
+
                         const SizedBox(height: 30),
 
-                        // USUÁRIO
                         TextField(
                           controller: _usuarioController,
                           focusNode: _usuarioFocus,
@@ -272,16 +263,15 @@ class _LoginPageState extends State<LoginPage> {
                           textInputAction: TextInputAction.next,
                           onSubmitted: (_) => _senhaFocus.requestFocus(),
                         ),
+
                         const SizedBox(height: 16),
 
-                        // SENHA
                         TextField(
                           controller: _senhaController,
                           focusNode: _senhaFocus,
                           obscureText: _obscurePassword,
                           onChanged: (_) => setState(() => _erroSenha = null),
                           onSubmitted: (_) => _login(),
-                          textInputAction: TextInputAction.done,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
                             labelText: "Senha",
@@ -292,22 +282,39 @@ class _LoginPageState extends State<LoginPage> {
                                 _obscurePassword ? Icons.visibility : Icons.visibility_off,
                                 color: Colors.white70,
                               ),
-                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                              onPressed: () =>
+                                  setState(() => _obscurePassword = !_obscurePassword),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 24),
+
+                        const SizedBox(height: 16),
+
+                        Row(
+                          children: [
+                            Checkbox(
+                              value: _memorizar,
+                              onChanged: (value) {
+                                setState(() {
+                                  _memorizar = value ?? false;
+                                });
+                              },
+                              activeColor: Colors.blueAccent,
+                            ),
+                            const Text(
+                              "Memorizar usuário",
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 16),
 
                         SizedBox(
                           width: double.infinity,
                           height: 50,
                           child: FilledButton(
-                            onPressed: _loading
-                                ? null
-                                : () {
-                                    debugPrint('[LOGIN] Botão "Entrar" clicado');
-                                    _login();
-                                  },
+                            onPressed: _loading ? null : () => _login(),
                             child: _loading
                                 ? const SizedBox(
                                     width: 22,
@@ -333,7 +340,6 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-// Intent vazio para bindar ao Shortcuts/Actions
 class VoidCallbackIntent extends Intent {
   const VoidCallbackIntent();
 }
