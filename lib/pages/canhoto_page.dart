@@ -275,7 +275,7 @@ Widget _form() {
                   return empresas.where((e) =>
                       e.nomeFantasia
                           .toLowerCase()
-                          .contains(value.text.toLowerCase()));
+                          .startsWith(value.text.toLowerCase()));
                 },
 
                 onSelected: (empresa) {
