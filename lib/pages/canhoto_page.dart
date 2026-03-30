@@ -245,72 +245,70 @@ Widget _form() {
           carregandoEmpresas
               ? const LinearProgressIndicator()
               : Autocomplete<Empresa>(
-              displayStringForOption: (e) => e.nomeFantasia,
+                displayStringForOption: (e) => e.nomeFantasia,
 
-              fieldViewBuilder: (context, controller, focusNode, _) {
-                return TextField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  readOnly: true,
-                  decoration: const InputDecoration(
-                    labelText: "Empresa",
-                    prefixIcon: Icon(Icons.apartment),
-                    border: OutlineInputBorder(),
-                  ),
+                fieldViewBuilder: (context, controller, focusNode, _) {
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: const InputDecoration(
+                      labelText: "Empresa",
+                      prefixIcon: Icon(Icons.apartment),
+                      border: OutlineInputBorder(),
+                    ),
 
-                  onTap: () {
-                    // 👉 abre lista sempre completa
-                    controller.text = "";
-                    focusNode.requestFocus();
-                  },
-                );
-              },
+                    onTap: () {
+                      // Mostra lista completa ao clicar
+                      controller.text = "";
+                      focusNode.requestFocus();
+                    },
+                  );
+                },
 
-              optionsBuilder: (TextEditingValue value) {
-                // 👉 NÃO filtra se o usuário está apenas abrindo
-                if (value.text.isEmpty) {
-                  return empresas; // lista completa
-                }
+                optionsBuilder: (TextEditingValue value) {
+                  if (value.text.isEmpty) {
+                    // Lista completa se não digitou nada
+                    return empresas;
+                  }
 
-                // 👉 só filtra se o usuário REALMENTE digitou algo
-                return empresas.where((e) =>
-                  e.nomeFantasia.toLowerCase().contains(value.text.toLowerCase()),
-                );
-              },
+                  // Filtra conforme digita
+                  return empresas.where((e) =>
+                      e.nomeFantasia
+                          .toLowerCase()
+                          .contains(value.text.toLowerCase()));
+                },
 
-              onSelected: (empresa) {
-                empresaSelecionada = empresa;
+                onSelected: (empresa) {
+                  empresaSelecionada = empresa;
+                  setState(() {});
+                },
 
-                // 👉 agora NÃO reabre a lista com 1 item
-                setState(() {});
-              },
-
-              optionsViewBuilder: (context, onSelected, options) {
-                return Align(
-                  alignment: Alignment.topLeft,
-                  child: Material(
-                    elevation: 4,
-                    child: SizedBox(
-                      height: 300,
-                      child: ListView.builder(
-                        padding: EdgeInsets.zero,
-                        itemCount: options.length,
-                        itemBuilder: (context, index) {
-                          final empresa = options.elementAt(index);
-                          return ListTile(
-                            title: Text(empresa.nomeFantasia),
-                            onTap: () {
-                              onSelected(empresa);
-                              FocusScope.of(context).unfocus(); // ✅ fecha o dropdown
-                            },
-                          );
-                        },
+                optionsViewBuilder: (context, onSelected, options) {
+                  return Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 4,
+                      child: SizedBox(
+                        height: 300,
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          itemCount: options.length,
+                          itemBuilder: (context, index) {
+                            final empresa = options.elementAt(index);
+                            return ListTile(
+                              title: Text(empresa.nomeFantasia),
+                              onTap: () {
+                                onSelected(empresa);
+                                FocusScope.of(context).unfocus(); // fecha dropdown
+                              },
+                            );
+                          },
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
 
           const SizedBox(height: 20),
 
