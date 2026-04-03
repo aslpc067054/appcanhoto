@@ -327,6 +327,20 @@ class _LoginPageState extends State<LoginPage> {
                                 : const Text("Entrar", style: TextStyle(fontSize: 16)),
                           ),
                         ),
+
+
+                        const SizedBox(height: 10),
+
+                        const Text(
+                          "BY TecnoIntegra",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white54, // discreto mas visível
+                            letterSpacing: 0.8,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+
                       ],
                     ),
                   ),
