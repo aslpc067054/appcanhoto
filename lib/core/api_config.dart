@@ -23,9 +23,8 @@ import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, Tar
 
 
 class ApiConfig {
-  // URL PÚBLICA (Railway)
-  static const String prodBase = 'https://loginapi-production-25dc.up.railway.app';
+  //static const String prodBase = 'https://loginapi-production-25dc.up.railway.app';
+  static const String prodBase = 'http://187.127.9.146:5000';
 
-  // Em produção/aparelho físico, use SEMPRE a URL do Railway:
   static String get base => prodBase;
 }
