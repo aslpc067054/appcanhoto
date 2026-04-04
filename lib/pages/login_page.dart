@@ -332,7 +332,7 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 10),
 
                         const Text(
-                          "BY TecnoIntegra",
+                          "BY TecnoIntegra V1.1.6",
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.white54, // discreto mas visível

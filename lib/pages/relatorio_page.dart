@@ -637,28 +637,76 @@ Future<void> _baixar(int id) async {
                                           final exibicao = r.dataHora.subtract(const Duration(hours: 3));
                                           final dt = _df.format(exibicao);
 
-                                          return DataRow(
-                                            cells: [
-                                              DataCell(
-                                                SizedBox(
-                                                  width: 90,
-                                                  height: 70,
-                                                  child: ClipRRect(
-                                                    borderRadius: BorderRadius.circular(6),
-                                                    child: r.thumbnail == null || r.thumbnail!.isEmpty
-                                                        ? Container(
-                                                            color: Colors.black12,
-                                                            child: const Icon(Icons.image_not_supported, size: 28),
-                                                          )
-                                                        : Image.memory(r.thumbnail!, fit: BoxFit.cover),
-                                                  ),
+                                        return DataRow(
+                                          cells: [
+                                            // =====================================================
+                                            // PREVIEW (imagem) – largura fixa
+                                            // =====================================================
+                                            DataCell(
+                                              SizedBox(
+                                                width: 90,
+                                                height: 70,
+                                                child: ClipRRect(
+                                                  borderRadius: BorderRadius.circular(6),
+                                                  child: r.thumbnail == null || r.thumbnail!.isEmpty
+                                                      ? Container(
+                                                          color: Colors.black12,
+                                                          alignment: Alignment.center,
+                                                          child: const Icon(
+                                                            Icons.image_not_supported,
+                                                            size: 28,
+                                                          ),
+                                                        )
+                                                      : Image.memory(
+                                                          r.thumbnail!,
+                                                          fit: BoxFit.cover,
+                                                        ),
                                                 ),
                                               ),
-                                              DataCell(Text(r.empresaNome)),
-                                              DataCell(Text(r.numeroNota)),
-                                              DataCell(Text(dt)),
-                                              DataCell(
-                                                Row(
+                                            ),
+
+                                            // =====================================================
+                                            // EMPRESA – flexível (ocupa o espaço restante)
+                                            // =====================================================
+                                            DataCell(
+                                              Text(
+                                                r.empresaNome,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+
+                                            // =====================================================
+                                            // NF – largura curta
+                                            // =====================================================
+                                            DataCell(
+                                              SizedBox(
+                                                width: 150,
+                                                child: Text(
+                                                  r.numeroNota,
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ),
+
+                                            // =====================================================
+                                            // DATA / HORA – largura média
+                                            // =====================================================
+                                            DataCell(
+                                              SizedBox(
+                                                width: 150,
+                                                child: Text(dt),
+                                              ),
+                                            ),
+
+                                            // =====================================================
+                                            // AÇÕES – largura fixa e compacta
+                                            // =====================================================
+                                            DataCell(
+                                              SizedBox(
+                                                width: 100,
+                                                child: Row(
                                                   mainAxisSize: MainAxisSize.min,
                                                   children: [
                                                     IconButton(
@@ -674,8 +722,9 @@ Future<void> _baixar(int id) async {
                                                   ],
                                                 ),
                                               ),
-                                            ],
-                                          );
+                                            ),
+                                          ],
+                                        );
                                         }).toList(),
                                       ),
                                     ),

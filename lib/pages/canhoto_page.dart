@@ -198,6 +198,22 @@ class _CanhotoPageState extends State<CanhotoPage> {
     );
   }
 
+//buscar imagem interna
+  Future<void> _buscarImagemInterna() async {
+  final picker = ImagePicker();
+  final file = await picker.pickImage(
+    source: ImageSource.gallery,
+    maxWidth: 1600,
+    maxHeight: 1600,
+    imageQuality: 80,
+  );
+
+  if (file != null) {
+    imagemAtual = await file.readAsBytes();
+    setState(() {});
+  }
+}
+
   // =========================================================
   // UI
   // =========================================================
@@ -341,19 +357,36 @@ Widget _form() {
                 ),
               ),
               const SizedBox(width: 12),
+
               Column(
                 children: [
-                  FilledButton(
-                    onPressed: _tirarFoto,
-                    child: const Text("Foto"),
+                  SizedBox(
+                    width: 110,
+                    child: FilledButton(
+                      onPressed: _tirarFoto,
+                      child: const Text("Foto"),
+                    ),
                   ),
                   const SizedBox(height: 6),
-                  OutlinedButton(
-                    onPressed: () => setState(() => imagemAtual = null),
-                    child: const Text("Limpar"),
+                  SizedBox(
+                    width: 110,
+                    child: FilledButton(
+                      onPressed: _buscarImagemInterna,
+                      child: const Text("Interna"),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  SizedBox(
+                    width: 110,
+                    child: OutlinedButton(
+                      onPressed: () => setState(() => imagemAtual = null),
+                      child: const Text("Limpar"),
+                    ),
                   ),
                 ],
               ),
+
+
             ],
           ),
 
