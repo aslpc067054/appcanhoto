@@ -45,6 +45,7 @@ class _CanhotoPageState extends State<CanhotoPage> {
   Uint8List? imagemAtual;
 
   final notaCtrl = TextEditingController();
+  final empresaCtrl = TextEditingController();
 
   bool carregandoEmpresas = false;
   bool salvando = false;
@@ -186,7 +187,7 @@ class _CanhotoPageState extends State<CanhotoPage> {
   }
 
   void _limpar() {
-    empresaSelecionada = null;
+   // empresaSelecionada = null;
     notaCtrl.clear();
     imagemAtual = null;
     setState(() {});
@@ -264,6 +265,9 @@ Widget _form() {
                 displayStringForOption: (e) => e.nomeFantasia,
 
                 fieldViewBuilder: (context, controller, focusNode, _) {
+
+                  controller.text = empresaCtrl.text;
+
                   return TextField(
                     controller: controller,
                     focusNode: focusNode,
@@ -273,11 +277,17 @@ Widget _form() {
                       border: OutlineInputBorder(),
                     ),
 
-                    onTap: () {
-                      // Mostra lista completa ao clicar
-                      controller.text = "";
-                      focusNode.requestFocus();
+
+                    onChanged: (value) {
+                      empresaCtrl.text = value;
+                      empresaSelecionada = null; // usuário alterou manualmente
                     },
+
+                   // onTap: () {
+                      // Mostra lista completa ao clicar
+                   //   controller.text = "";
+                   //   focusNode.requestFocus();
+                   // },
                   );
                 },
 
@@ -296,6 +306,7 @@ Widget _form() {
 
                 onSelected: (empresa) {
                   empresaSelecionada = empresa;
+                  empresaCtrl.text = empresa.nomeFantasia;
                   setState(() {});
                 },
 
