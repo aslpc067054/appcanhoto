@@ -24,7 +24,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, Tar
 
 class ApiConfig {
   //static const String prodBase = 'https://loginapi-production-25dc.up.railway.app';
-  static const String prodBase = 'http://187.127.9.146:5166';
+  static const String prodBase = 'https://www.expresshow.com';
 
   static String get base => prodBase;
 }
