@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 
 class ConnectivityService {
   final Connectivity _conn = Connectivity();
@@ -12,6 +13,12 @@ class ConnectivityService {
   /// ✅ Verifica se existe conexão REAL com a internet
   /// Faz um request ultra-rápido e seguro
   Future<bool> hasInternet() async {
+    if (kIsWeb) {
+      final result = await _conn.checkConnectivity();
+      return !result.contains(ConnectivityResult.none);
+    }
+
+
     final results = await _conn.checkConnectivity();
 
     // Sem nenhum tipo de rede disponível
