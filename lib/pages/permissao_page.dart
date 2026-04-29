@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:appcanhoto/core/api_config.dart';
@@ -256,7 +255,7 @@ class _PermissaoPageState extends State<PermissaoPage> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<Usuario>(
-                        value: _usuarioSel,
+                        initialValue: _usuarioSel,
                         isExpanded: true,
                         decoration: const InputDecoration(
                           labelText: 'Usuário',
@@ -273,7 +272,7 @@ class _PermissaoPageState extends State<PermissaoPage> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _grupoSel,
+                        initialValue: _grupoSel,
                         isExpanded: true,
                         decoration: const InputDecoration(
                           labelText: 'Grupo de permissão',

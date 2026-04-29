@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart'
-    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
@@ -10,6 +8,8 @@ import 'home_page.dart';
 import 'package:appcanhoto/core/api_config.dart';
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     final darkTheme = ThemeData(
@@ -19,14 +19,14 @@ class MyApp extends StatelessWidget {
         primary: Colors.blueAccent,
         secondary: Colors.blueAccent,
         surface: Colors.black,
-        background: Colors.black,
         onSurface: Colors.white,
-        onBackground: Colors.white,
       ),
       scaffoldBackgroundColor: Colors.black,
       canvasColor: Colors.black,
       cardColor: const Color(0xFF121212),
-      dialogBackgroundColor: const Color(0xFF121212),
+      dialogTheme: const DialogThemeData(
+        backgroundColor: Color(0xFF121212),
+      ),
       inputDecorationTheme: const InputDecorationTheme(
         labelStyle: TextStyle(color: Colors.white70),
         hintStyle: TextStyle(color: Colors.white60),
@@ -173,6 +173,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
         );
       } else if (response.statusCode == 401) {
+        if (!mounted) return;
         setState(() => _erroSenha = "Usuário ou senha inválidos");
         _senhaController.clear();
 
@@ -183,11 +184,13 @@ class _LoginPageState extends State<LoginPage> {
           ),
         );
       } else {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Erro ${response.statusCode}: ${response.body}")),
         );
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Erro ao conectar na API"),
@@ -199,7 +202,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  VoidCallbackIntent _loginIntent = const VoidCallbackIntent();
+  final VoidCallbackIntent _loginIntent = const VoidCallbackIntent();
   late final Map<Type, Action<Intent>> _actions = <Type, Action<Intent>>{
     VoidCallbackIntent: CallbackAction<VoidCallbackIntent>(onInvoke: (_) {
       _login();
@@ -332,7 +335,7 @@ class _LoginPageState extends State<LoginPage> {
                         const SizedBox(height: 10),
 
                         const Text(
-                          "BY TecnoIntegra V1.1.7",
+                          "BY TecnoIntegra V1.1.8",
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.white54, // discreto mas visível

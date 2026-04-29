@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
@@ -104,12 +104,12 @@ class _CanhotoPageState extends State<CanhotoPage> {
         // Apenas ativas
         empresas = empresas.where((e) => e.status == 0).toList();
 
-        print("EMPRESAS CARREGADAS: ${empresas.length}");
+        debugPrint("EMPRESAS CARREGADAS: ${empresas.length}");
       } else {
         throw Exception("HTTP ${resp.statusCode}");
       }
     } catch (e) {
-      print("ERRO EMPRESAS: $e");
+      debugPrint("ERRO EMPRESAS: $e");
       _msg("Erro ao carregar empresas.");
     }
 

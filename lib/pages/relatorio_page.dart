@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:math' as math; // <<< NOVO: para minWidth do grid
 
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
@@ -258,16 +257,19 @@ class _RelatorioPageState extends State<RelatorioPage> {
     );
     if (date == null) return;
 
+    if (!mounted) return;
+
     final time = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(initial),
       builder: (ctx, child) => MediaQuery(
-        data: MediaQuery.of(ctx!).copyWith(alwaysUse24HourFormat: true),
+        data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: true),
         child: child!,
       ),
     );
     if (time == null) return;
 
+    if (!mounted) return;
     final dt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
     if (isInicio) {
       _dataIni = dt;
@@ -276,7 +278,7 @@ class _RelatorioPageState extends State<RelatorioPage> {
       _dataFim = dt;
       _dataFimCtrl.text = _df.format(dt);
     }
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   // =========================
@@ -305,6 +307,8 @@ class _RelatorioPageState extends State<RelatorioPage> {
     final bytes = await _carregarImagemCompleta(row.id);
     if (bytes == null) return;
 
+    if (!mounted) return;
+
     await showDialog(
       context: context,
       builder: (ctx) => Dialog(
@@ -316,7 +320,7 @@ class _RelatorioPageState extends State<RelatorioPage> {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(color: Colors.black.withOpacity(0.05)),
+                decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.05)),
                 child: Row(
                   children: [
                     Expanded(child: Text('Canhoto #${row.id} — ${row.empresaNome} • NF ${row.numeroNota}')),

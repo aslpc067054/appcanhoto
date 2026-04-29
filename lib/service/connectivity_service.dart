@@ -28,7 +28,7 @@ class ConnectivityService {
       // Testa conexão real
       final sw = Stopwatch()..start();
 
-      final resp = await http
+      await http
           .get(Uri.parse("https://www.google.com"))
           .timeout(const Duration(seconds: 2));
 

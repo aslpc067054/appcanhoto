@@ -84,6 +84,8 @@ static String get apiBaseUrl => '${ApiConfig.base}/api/permissoes';
 
   // ==== Ações já existentes ====
   void _logout(BuildContext context) async {
+    final navigator = Navigator.of(context);
+    
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -97,7 +99,7 @@ static String get apiBaseUrl => '${ApiConfig.base}/api/permissoes';
     );
     if (confirmar != true) return;
 
-    Navigator.of(context).pushAndRemoveUntil(
+    navigator.pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const LoginPage()),
       (route) => false,
     );
@@ -270,7 +272,7 @@ List<Widget> _construirAcoesPorPermissao(BuildContext context) {
               boxShadow: [
                 if (!isDark)
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 8,
                     offset: const Offset(0, 4),
                   ),

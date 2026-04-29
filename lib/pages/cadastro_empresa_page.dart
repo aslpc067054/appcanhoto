@@ -1,7 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart'
-    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -503,7 +501,7 @@ class _CadastroEmpresaPageState extends State<CadastroEmpresaPage> {
 
                       // UF com Dropdown
                       DropdownButtonFormField<String>(
-                        value: _estadoSelecionado,
+                        initialValue: _estadoSelecionado,
                         items: _ufs
                             .map((uf) => DropdownMenuItem(
                                   value: uf,
