@@ -4,7 +4,7 @@ import '../models/canhoto.dart';
 class CanhotoLocalService {
   final Box _box = Hive.box('canhotos_local');
 
-  /// ✅ Carrega a lista de canhotos salvos localmente (somente do dia).
+  /// Carrega a lista de canhotos salvos localmente (somente do dia).
   Future<List<Canhoto>> loadToday() async {
     final raw = _box.get('today') as List?;
     if (raw == null) return [];
@@ -14,7 +14,7 @@ class CanhotoLocalService {
         .toList();
   }
 
-  /// ✅ Salva a lista local completa.
+  /// Salva a lista local completa.
   Future<void> saveToday(List<Canhoto> lista) async {
     final serialized =
         lista.map((c) => c.toMap()).toList();
@@ -22,7 +22,7 @@ class CanhotoLocalService {
     await _box.put('today', serialized);
   }
 
-  /// ✅ Limpa todos os canhotos locais do dia (se precisar no futuro).
+  /// Limpa todos os canhotos locais do dia (se precisar no futuro).
   Future<void> clear() async {
     await _box.put('today', []);
   }

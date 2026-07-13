@@ -47,6 +47,7 @@ class CanhotoRow {
   final String empresaNome;
   final String numeroNota;
   final DateTime dataHora;
+  final String usuarioNome;
   final Uint8List? thumbnail; // ThumbnailBase64 -> bytes
 
   CanhotoRow({
@@ -55,6 +56,7 @@ class CanhotoRow {
     required this.empresaNome,
     required this.numeroNota,
     required this.dataHora,
+    required this.usuarioNome,
     required this.thumbnail,
   });
 
@@ -64,6 +66,7 @@ class CanhotoRow {
         empresaNome: (j['EmpresaNome'] ?? j['empresaNome'] ?? '') as String,
         numeroNota: (j['NumeroNota'] ?? j['numeroNota'] ?? '') as String,
         dataHora: DateTime.parse((j['DataHora'] ?? j['dataHora']) as String),
+        usuarioNome: (j['UsuarioNome'] ?? j['usuarioNome'] ?? '') as String,
         thumbnail: (j['ThumbnailBase64'] != null && (j['ThumbnailBase64'] as String).isNotEmpty)
             ? base64Decode(j['ThumbnailBase64'] as String)
             : null,
@@ -634,6 +637,7 @@ Future<void> _baixar(int id) async {
                                           DataColumn(label: Text('Empresa')),
                                           DataColumn(label: Text('NF')),
                                           DataColumn(label: Text('Data/Hora')),
+                                          DataColumn(label: Text('Usuário')),
                                           DataColumn(label: Text('Ações')),
                                         ],
                                         rows: _resultados.map((r) {
@@ -701,6 +705,20 @@ Future<void> _baixar(int id) async {
                                               SizedBox(
                                                 width: 150,
                                                 child: Text(dt),
+                                              ),
+                                            ),
+
+                                            // =====================================================
+                                            // USUÁRIO – largura média
+                                            // =====================================================
+                                            DataCell(
+                                              SizedBox(
+                                                width: 180,
+                                                child: Text(
+                                                  r.usuarioNome,
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
                                               ),
                                             ),
 

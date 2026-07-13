@@ -11,15 +11,15 @@ class Empresa {
 
   factory Empresa.fromJson(Map<String, dynamic> j) {
     return Empresa(
-      // ✅ ID (int ou string)
+      //  ID (int ou string)
       id: j['id'] is int
           ? j['id']
           : int.tryParse(j['id'].toString()) ?? 0,
 
-      // ✅ nomeFantasia (string segura)
+      //  nomeFantasia (string segura)
       nomeFantasia: j['nomeFantasia']?.toString() ?? '',
 
-      // ✅ Status (0 = ativo, 1 = inativo)
+      //  Status (0 = ativo, 1 = inativo)
       status: j['status'] is int ? j['status'] : int.tryParse(j['status'].toString()) ?? 0,
     );
   }

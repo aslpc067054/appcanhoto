@@ -253,6 +253,7 @@ class _CanhotoPageState extends State<CanhotoPage> {
         empresaNome: empresaSelecionada!.nomeFantasia,
         numeroNota: notaCtrl.text.trim(),
         dataHora: DateTime.now(),
+        //usuarioNome: widget.usuarioNome,
         imagemBytes: imagemAtual!,
         status: SyncStatus.pending,
       );

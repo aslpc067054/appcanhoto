@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\projeto\\appcanhoto\\LoginApi\\LoginApi.csproj": {}
+    "C:\\projeto\\gestaocarga\\LoginApi\\LoginApi.csproj": {}
   },
   "projects": {
-    "C:\\projeto\\appcanhoto\\LoginApi\\LoginApi.csproj": {
+    "C:\\projeto\\gestaocarga\\LoginApi\\LoginApi.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\projeto\\appcanhoto\\LoginApi\\LoginApi.csproj",
+        "projectUniqueName": "C:\\projeto\\gestaocarga\\LoginApi\\LoginApi.csproj",
         "projectName": "LoginApi",
-        "projectPath": "C:\\projeto\\appcanhoto\\LoginApi\\LoginApi.csproj",
+        "projectPath": "C:\\projeto\\gestaocarga\\LoginApi\\LoginApi.csproj",
         "packagesPath": "C:\\Users\\ariel\\.nuget\\packages\\",
-        "outputPath": "C:\\projeto\\appcanhoto\\LoginApi\\obj\\",
+        "outputPath": "C:\\projeto\\gestaocarga\\LoginApi\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\ariel\\AppData\\Roaming\\NuGet\\NuGet.Config"

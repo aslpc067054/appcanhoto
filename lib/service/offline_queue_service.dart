@@ -4,7 +4,7 @@ import '../models/canhoto.dart';
 class OfflineQueueService {
   final Box _box = Hive.box('offline_queue');
 
-  /// ✅ Retorna toda a fila offline (pendentes + erro)
+  ///  Retorna toda a fila offline (pendentes + erro)
   List<Canhoto> getQueue() {
     final raw = _box.get('queue') as List?;
     if (raw == null) return [];
@@ -14,7 +14,7 @@ class OfflineQueueService {
         .toList();
   }
 
-  /// ✅ Adiciona um item à fila
+  ///  Adiciona um item à fila
   Future<void> add(Canhoto c) async {
     final q = getQueue();
     q.add(c);
@@ -25,7 +25,7 @@ class OfflineQueueService {
     );
   }
 
-  /// ✅ Remove um item EXATO da fila (identificado pela dataHora)
+  ///  Remove um item EXATO da fila (identificado pela dataHora)
   Future<void> remove(Canhoto c) async {
     final q = getQueue()
       ..removeWhere((i) => i.dataHora == c.dataHora);
@@ -36,7 +36,7 @@ class OfflineQueueService {
     );
   }
 
-  /// ✅ Substitui toda a fila (quando necessário)
+  ///  Substitui toda a fila (quando necessário)
   Future<void> saveAll(List<Canhoto> fila) async {
     await _box.put(
       'queue',
@@ -44,7 +44,7 @@ class OfflineQueueService {
     );
   }
 
-  /// ✅ Limpa fila inteira (não usado agora, mas útil para o futuro)
+  ///  Limpa fila inteira (não usado agora, mas útil para o futuro)
   Future<void> clear() async {
     await _box.put('queue', []);
   }

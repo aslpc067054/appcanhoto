@@ -19,7 +19,7 @@ class SyncService {
     required this.conn,
   });
 
-  /// ✅ Tenta sincronizar toda a fila
+  /// Tenta sincronizar toda a fila
   Future<void> sync() async {
     // Garante conexão real
     if (!await conn.hasInternet()) return;
@@ -31,11 +31,11 @@ class SyncService {
 
     for (final item in fila) {
       try {
-        // ✅ Tentando enviar
+        // Tentando enviar
         final novoId = await remote.enviar(item);
 
         if (novoId != null) {
-          // ✅ Sincronizado com sucesso!
+          // Sincronizado com sucesso!
           final atualizado = item.copyWith(
             id: novoId,
             status: SyncStatus.synced,
@@ -58,11 +58,11 @@ class SyncService {
       }
     }
 
-    // ✅ Salva lista atualizada
+    //  Salva lista atualizada
     await local.saveToday(listaHoje);
   }
 
-  /// ✅ Marca um item como falha na sincronização
+  ///  Marca um item como falha na sincronização
   void _marcarErro(Canhoto item, List<Canhoto> listaHoje) {
     final erro = item.copyWith(status: SyncStatus.error);
 

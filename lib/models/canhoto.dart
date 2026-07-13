@@ -10,6 +10,7 @@ class Canhoto {
   final String empresaNome;
   final String numeroNota;
   final DateTime dataHora;
+  //final String usuarioNome; 
   final Uint8List imagemBytes;
   final SyncStatus status;
 
@@ -20,11 +21,12 @@ class Canhoto {
     required this.empresaNome,
     required this.numeroNota,
     required this.dataHora,
+    //required this.usuarioNome,
     required this.imagemBytes,
     required this.status,
   });
 
-  /// ✅ cópia imutável do objeto (usado para atualizar status)
+  /// cópia imutável do objeto (usado para atualizar status)
   Canhoto copyWith({
     int? id,
     int? idUsuario,
@@ -32,6 +34,7 @@ class Canhoto {
     String? empresaNome,
     String? numeroNota,
     DateTime? dataHora,
+    //String? usuarioNome,
     Uint8List? imagemBytes,
     SyncStatus? status,
   }) {
@@ -42,12 +45,13 @@ class Canhoto {
       empresaNome: empresaNome ?? this.empresaNome,
       numeroNota: numeroNota ?? this.numeroNota,
       dataHora: dataHora ?? this.dataHora,
+      //usuarioNome: usuarioNome ?? this.usuarioNome,
       imagemBytes: imagemBytes ?? this.imagemBytes,
       status: status ?? this.status,
     );
   }
 
-  /// ✅ usado para salvar no Hive
+  /// usado para salvar no Hive
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -61,7 +65,7 @@ class Canhoto {
     };
   }
 
-  /// ✅ usado ao carregar do Hive
+  /// usado ao carregar do Hive
   factory Canhoto.fromMap(Map<String, dynamic> map) {
     return Canhoto(
       id: map['id'],
@@ -70,6 +74,7 @@ class Canhoto {
       empresaNome: map['empresaNome'],
       numeroNota: map['numeroNota'],
       dataHora: DateTime.parse(map['dataHora']),
+     // usuarioNome: map['UsuarioNome'],
       imagemBytes: base64Decode(map['imagemBase64']),
       status: SyncStatus.values.firstWhere(
         (s) => s.name == map['status'],

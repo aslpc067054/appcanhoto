@@ -598,11 +598,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\projeto\\appcanhoto\\LoginApi\\LoginApi.csproj",
+      "projectUniqueName": "C:\\projeto\\gestaocarga\\LoginApi\\LoginApi.csproj",
       "projectName": "LoginApi",
-      "projectPath": "C:\\projeto\\appcanhoto\\LoginApi\\LoginApi.csproj",
+      "projectPath": "C:\\projeto\\gestaocarga\\LoginApi\\LoginApi.csproj",
       "packagesPath": "C:\\Users\\ariel\\.nuget\\packages\\",
-      "outputPath": "C:\\projeto\\appcanhoto\\LoginApi\\obj\\",
+      "outputPath": "C:\\projeto\\gestaocarga\\LoginApi\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\ariel\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -1084,5 +1084,17 @@
         }
       }
     }
-  }
+  },
+  "logs": [
+    {
+      "code": "NU1903",
+      "level": "Warning",
+      "warningLevel": 1,
+      "message": "Package 'Microsoft.OpenApi' 2.0.0 has a known high severity vulnerability, https://github.com/advisories/GHSA-v5pm-xwqc-g5wc",
+      "libraryId": "Microsoft.OpenApi",
+      "targetGraphs": [
+        "net10.0"
+      ]
+    }
+  ]
 }

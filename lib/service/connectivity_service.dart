@@ -32,7 +32,7 @@ class ConnectivityService {
           .get(Uri.parse("https://www.google.com"))
           .timeout(const Duration(seconds: 2));
 
-      // ✅ Considera internet OK com latência boa (< 900ms)
+      // Considera internet OK com latência boa (< 900ms)
       return sw.elapsedMilliseconds < 900;
     } catch (_) {
       return false;
