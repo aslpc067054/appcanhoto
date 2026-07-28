@@ -424,9 +424,11 @@ Future<void> _baixar(int id) async {
                         child: Autocomplete<Empresa>(
                           displayStringForOption: (e) => e.nomeFantasia,
                           optionsBuilder: (TextEditingValue t) {
-                            if (t.text.isEmpty) return _empresas;
+                            final empresasOrdenadas = [..._empresas]
+                              ..sort((a, b) => a.nomeFantasia.compareTo(b.nomeFantasia));
+                            if (t.text.isEmpty) return empresasOrdenadas;
                             final txt = t.text.toLowerCase();
-                            return _empresas.where((e) => e.nomeFantasia.toLowerCase().contains(txt));
+                            return empresasOrdenadas.where((e) => e.nomeFantasia.toLowerCase().contains(txt));
                           },
                           fieldViewBuilder: (ctx, controller, focus, _) {
                             _empresaFocusNode = focus;
@@ -477,9 +479,15 @@ Future<void> _baixar(int id) async {
                         child: Autocomplete<Usuario>(
                           displayStringForOption: (u) => u.nomeCompleto?.isNotEmpty == true ? u.nomeCompleto! : u.usuario,
                           optionsBuilder: (TextEditingValue t) {
-                            if (t.text.isEmpty) return _usuarios;
+                            final usuariosOrdenados = [..._usuarios]
+                              ..sort((a, b) {
+                                final aLabel = (a.nomeCompleto ?? a.usuario).toLowerCase();
+                                final bLabel = (b.nomeCompleto ?? b.usuario).toLowerCase();
+                                return aLabel.compareTo(bLabel);
+                              });
+                            if (t.text.isEmpty) return usuariosOrdenados;
                             final txt = t.text.toLowerCase();
-                            return _usuarios.where((u) =>
+                            return usuariosOrdenados.where((u) =>
                                 (u.nomeCompleto ?? '').toLowerCase().contains(txt) ||
                                 u.usuario.toLowerCase().contains(txt));
                           },

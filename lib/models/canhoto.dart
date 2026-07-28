@@ -5,6 +5,7 @@ import 'sync_status.dart';
 
 class Canhoto {
   final int? id;
+  final String clienteId;
   final int idUsuario;
   final int idEmpresa;
   final String empresaNome;
@@ -16,6 +17,7 @@ class Canhoto {
 
   Canhoto({
     required this.id,
+    required this.clienteId,
     required this.idUsuario,
     required this.idEmpresa,
     required this.empresaNome,
@@ -29,6 +31,7 @@ class Canhoto {
   /// cópia imutável do objeto (usado para atualizar status)
   Canhoto copyWith({
     int? id,
+    String? clienteId,
     int? idUsuario,
     int? idEmpresa,
     String? empresaNome,
@@ -40,6 +43,7 @@ class Canhoto {
   }) {
     return Canhoto(
       id: id ?? this.id,
+      clienteId: clienteId ?? this.clienteId,
       idUsuario: idUsuario ?? this.idUsuario,
       idEmpresa: idEmpresa ?? this.idEmpresa,
       empresaNome: empresaNome ?? this.empresaNome,
@@ -55,27 +59,37 @@ class Canhoto {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'clienteId': clienteId,
       'idUsuario': idUsuario,
       'idEmpresa': idEmpresa,
       'empresaNome': empresaNome,
       'numeroNota': numeroNota,
       'dataHora': dataHora.toIso8601String(),
-      'imagemBase64': base64Encode(imagemBytes),
+      'imagemBase64': imagemBytes.isEmpty ? '' : base64Encode(imagemBytes),
       'status': status.name,
     };
   }
 
   /// usado ao carregar do Hive
   factory Canhoto.fromMap(Map<String, dynamic> map) {
+    final imagemBase64 = map['imagemBase64'];
+    final bytes = (imagemBase64 == null ||
+            (imagemBase64 is String && imagemBase64.trim().isEmpty))
+        ? Uint8List(0)
+        : base64Decode(imagemBase64.toString());
+
     return Canhoto(
       id: map['id'],
+      clienteId: map['clienteId']?.toString() ??
+          map['id']?.toString() ??
+          DateTime.now().microsecondsSinceEpoch.toString(),
       idUsuario: map['idUsuario'],
       idEmpresa: map['idEmpresa'],
       empresaNome: map['empresaNome'],
       numeroNota: map['numeroNota'],
       dataHora: DateTime.parse(map['dataHora']),
-     // usuarioNome: map['UsuarioNome'],
-      imagemBytes: base64Decode(map['imagemBase64']),
+      // usuarioNome: map['UsuarioNome'],
+      imagemBytes: bytes,
       status: SyncStatus.values.firstWhere(
         (s) => s.name == map['status'],
         orElse: () => SyncStatus.pending,

@@ -25,10 +25,19 @@ class OfflineQueueService {
     );
   }
 
-  ///  Remove um item EXATO da fila (identificado pela dataHora)
+  bool _mesmoItem(Canhoto a, Canhoto b) {
+    if (a.clienteId.isNotEmpty && b.clienteId.isNotEmpty) {
+      return a.clienteId == b.clienteId;
+    }
+
+    return a.dataHora == b.dataHora &&
+        a.idEmpresa == b.idEmpresa &&
+        a.numeroNota == b.numeroNota;
+  }
+
+  /// ✅ Remove um item EXATO da fila (identificado por clienteId, ou fallback por dataHora)
   Future<void> remove(Canhoto c) async {
-    final q = getQueue()
-      ..removeWhere((i) => i.dataHora == c.dataHora);
+    final q = getQueue()..removeWhere((i) => _mesmoItem(i, c));
 
     await _box.put(
       'queue',

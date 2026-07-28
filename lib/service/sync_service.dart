@@ -19,6 +19,16 @@ class SyncService {
     required this.conn,
   });
 
+  bool _mesmoItem(Canhoto a, Canhoto b) {
+    if (a.clienteId.isNotEmpty && b.clienteId.isNotEmpty) {
+      return a.clienteId == b.clienteId;
+    }
+
+    return a.dataHora == b.dataHora &&
+        a.idEmpresa == b.idEmpresa &&
+        a.numeroNota == b.numeroNota;
+  }
+
   /// Tenta sincronizar toda a fila
   Future<void> sync() async {
     // Garante conexão real
@@ -42,9 +52,7 @@ class SyncService {
           );
 
           // Atualiza lista diária
-          final idx = listaHoje.indexWhere(
-            (c) => c.dataHora == item.dataHora,
-          );
+          final idx = listaHoje.indexWhere((c) => _mesmoItem(c, item));
 
           if (idx >= 0) listaHoje[idx] = atualizado;
 
@@ -66,9 +74,7 @@ class SyncService {
   void _marcarErro(Canhoto item, List<Canhoto> listaHoje) {
     final erro = item.copyWith(status: SyncStatus.error);
 
-    final idx = listaHoje.indexWhere(
-      (c) => c.dataHora == item.dataHora,
-    );
+    final idx = listaHoje.indexWhere((c) => _mesmoItem(c, item));
 
     if (idx >= 0) listaHoje[idx] = erro;
   }

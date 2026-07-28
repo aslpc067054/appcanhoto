@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -52,7 +51,6 @@ class _CanhotoPageState extends State<CanhotoPage> {
   bool carregandoEmpresas = false;
   bool salvando = false;
   bool online = true;
-
   StreamSubscription? _connSub;
   bool _syncing = false;
 
@@ -185,9 +183,9 @@ class _CanhotoPageState extends State<CanhotoPage> {
       final picker = ImagePicker();
       final file = await picker.pickImage(
         source: ImageSource.camera,
-        maxWidth: 1600,
-        maxHeight: 1600,
-        imageQuality: 80,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 70,
       );
 
       if (file != null) {
@@ -209,9 +207,9 @@ class _CanhotoPageState extends State<CanhotoPage> {
       final picker = ImagePicker();
       final file = await picker.pickImage(
         source: ImageSource.gallery,
-        maxWidth: 1600,
-        maxHeight: 1600,
-        imageQuality: 80,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 70,
       );
 
       if (file != null) {
@@ -248,6 +246,7 @@ class _CanhotoPageState extends State<CanhotoPage> {
     try {
       final novo = Canhoto(
         id: null,
+        clienteId: DateTime.now().microsecondsSinceEpoch.toString(),
         idUsuario: widget.idUsuario,
         idEmpresa: empresaSelecionada!.id,
         empresaNome: empresaSelecionada!.nomeFantasia,
@@ -261,6 +260,7 @@ class _CanhotoPageState extends State<CanhotoPage> {
       listaHoje.insert(0, novo);
       await local.saveToday(listaHoje);
       await queue.add(novo);
+      await _carregarHoje();
 
       _limpar();
       if (!mounted) return;
