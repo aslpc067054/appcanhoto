@@ -3,9 +3,12 @@ import 'dart:typed_data';
 import 'dart:math' as math; // <<< NOVO: para minWidth do grid
 
 import 'package:flutter/material.dart';
+import 'relatorio_pdf_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:pdf/pdf.dart';
 import 'package:appcanhoto/core/api_config.dart';
 
 /// =======================================
@@ -115,6 +118,7 @@ class _RelatorioPageState extends State<RelatorioPage> {
   // Resultados
   List<CanhotoRow> _resultados = [];
   bool _buscando = false;
+  bool _gerandoPdf = false;
   int _page = 1;
   int _pageSize = 20;
   int _total = 0;
@@ -230,6 +234,55 @@ class _RelatorioPageState extends State<RelatorioPage> {
     }
   }
 
+  Future<List<CanhotoRow>> _buscarTodosResultadosRelatorio() async {
+    final allResults = <CanhotoRow>[];
+    var currentPage = 1;
+    var pageSize = _pageSize;
+    var total = -1;
+
+    while (true) {
+      final params = <String, String>{
+        'Page': '$currentPage',
+        'PageSize': '$pageSize',
+        'WithThumb': 'false',
+      };
+      if (_empresaSel != null) params['IdEmpresa'] = '${_empresaSel!.id}';
+      if (_usuarioSel != null) params['IdUsuario'] = '${_usuarioSel!.id}';
+      if (_notaCtrl.text.trim().isNotEmpty) params['NumeroNota'] = _notaCtrl.text.trim();
+
+      final dataInicioApi = _dataIni?.add(const Duration(hours: 3));
+      final dataFimApi = _dataFim?.add(const Duration(hours: 3));
+      if (dataInicioApi != null) params['DataHoraIni'] = dataInicioApi.toIso8601String();
+      if (dataFimApi != null) params['DataHoraFim'] = dataFimApi.toIso8601String();
+
+      final uri = Uri.parse('$baseUrl/canhotos/relatorio').replace(queryParameters: params);
+      final resp = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 45));
+      if (resp.statusCode != 200) {
+        throw Exception('Erro na consulta de todas as páginas (${resp.statusCode}).');
+      }
+
+      final j = jsonDecode(resp.body) as Map<String, dynamic>;
+      final List list = (j['Data'] ?? j['data'] ?? []) as List;
+      final results = list.map((e) => CanhotoRow.fromJson(Map<String, dynamic>.from(e))).toList();
+      allResults.addAll(results);
+
+      if (total < 0) {
+        total = (j['Total'] ?? j['total'] ?? -1) as int;
+      }
+      pageSize = (j['PageSize'] ?? j['pageSize'] ?? pageSize) as int;
+      final responsePage = (j['Page'] ?? j['page'] ?? currentPage) as int;
+      if (results.length < pageSize) {
+        break;
+      }
+      if (total > 0 && allResults.length >= total) {
+        break;
+      }
+      currentPage = responsePage + 1;
+    }
+
+    return allResults;
+  }
+
   void _limpar() {
     _empresaSel = null;
     _usuarioSel = null;
@@ -244,6 +297,100 @@ class _RelatorioPageState extends State<RelatorioPage> {
     _page = 1;
     _total = 0;
     setState(() {});
+  }
+
+  Future<pw.Font> _loadPdfFont() async {
+    return loadPdfFont();
+
+  }
+
+  Future<void> _gerarPdf() async {
+    if (_resultados.isEmpty) {
+      _showSnack('Faça uma busca antes de gerar o PDF.');
+      return;
+    }
+
+    setState(() => _gerandoPdf = true);
+    try {
+      final pdfFont = await _loadPdfFont();
+      final todosResultados = await _buscarTodosResultadosRelatorio();
+
+      final doc = pw.Document();
+      final rows = todosResultados
+          .map((r) => [
+                r.empresaNome,
+                r.numeroNota,
+                _df.format(r.dataHora.subtract(const Duration(hours: 3))),
+                r.usuarioNome,
+              ])
+          .toList();
+
+      doc.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4.landscape,
+          margin: const pw.EdgeInsets.all(24),
+          build: (context) => [
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  'Relatório Expresso Show',
+                  style: pw.TextStyle(font: pdfFont, fontSize: 20, fontWeight: pw.FontWeight.bold),
+                ),
+                pw.SizedBox(height: 4),
+                pw.Text(
+                  'Relatório de Canhotos',
+                  style: pw.TextStyle(font: pdfFont, fontSize: 12),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 16),
+            pw.Text(
+              'Empresa: ${_empresaSel?.nomeFantasia ?? 'Todos'}  |  '
+              'Usuário: ${_usuarioSel?.nomeCompleto ?? _usuarioSel?.usuario ?? 'Todos'}  |  '
+              'NF: ${_notaCtrl.text.isNotEmpty ? _notaCtrl.text : 'Todos'}  |  '
+              'Período: ${_dataIni != null ? _df.format(_dataIni!) : '-'} até ${_dataFim != null ? _df.format(_dataFim!) : '-'}',
+              style: pw.TextStyle(font: pdfFont, fontSize: 10, fontFallback: [pdfFont]),
+            ),
+            pw.SizedBox(height: 16),
+            pw.TableHelper.fromTextArray(
+              border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+              headerStyle: pw.TextStyle(font: pdfFont, fontSize: 11, fontWeight: pw.FontWeight.bold),
+              cellStyle: pw.TextStyle(font: pdfFont, fontSize: 10, fontFallback: [pdfFont]),
+              headerDecoration: pw.BoxDecoration(color: PdfColors.grey200),
+              cellAlignment: pw.Alignment.center,
+              headers: ['Empresa', 'NF', 'Data/Hora', 'Usuário'],
+              data: rows,
+              columnWidths: {
+                0: const pw.FlexColumnWidth(4),
+                1: const pw.FlexColumnWidth(2),
+                2: const pw.FlexColumnWidth(2),
+                3: const pw.FlexColumnWidth(4),
+              },
+            ),
+          ],
+        ),
+      );
+
+      final bytes = await doc.save();
+      final path = await _savePdfFile(bytes);
+      _showSnack('PDF salvo em:\n$path');
+      await _openPdfFile(path);
+    } catch (e, st) {
+      debugPrint('Erro ao gerar PDF: $e');
+      debugPrintStack(label: 'Stack trace do erro de PDF', stackTrace: st);
+      _showSnack('Falha ao gerar o PDF: ${e.toString()}');
+    } finally {
+      if (mounted) setState(() => _gerandoPdf = false);
+    }
+  }
+
+  Future<void> _openPdfFile(String path) async {
+    await openPdfFile(path);
+  }
+
+  Future<String> _savePdfFile(Uint8List bytes) async {
+    return savePdfFile(bytes);
   }
 
   // =========================
@@ -580,9 +727,12 @@ Future<void> _baixar(int id) async {
 
                   const SizedBox(height: 16),
 
-                  Row(
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
                     children: [
-                      Expanded(
+                      SizedBox(
+                        width: 160,
                         child: FilledButton.icon(
                           onPressed: _buscando ? null : () => _buscar(toPage: 1),
                           icon: _buscando
@@ -591,8 +741,18 @@ Future<void> _baixar(int id) async {
                           label: const Text('Buscar'),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
+                      SizedBox(
+                        width: 160,
+                        child: FilledButton.icon(
+                          onPressed: _buscando || _gerandoPdf ? null : _gerarPdf,
+                          icon: _gerandoPdf
+                              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              : const Icon(Icons.picture_as_pdf),
+                          label: const Text('Gerar PDF'),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 160,
                         child: OutlinedButton.icon(
                           onPressed: _buscando ? null : _limpar,
                           icon: const Icon(Icons.clear),

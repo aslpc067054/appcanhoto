@@ -23,8 +23,8 @@
 
 class ApiConfig {
   //static const String prodBase = 'https://loginapi-production-25dc.up.railway.app';
-  //static const String prodBase = 'https://www.expresshow.com';
-  static const String prodBase = 'https://www.paulotransportes.com';
+  static const String prodBase = 'https://www.expresshow.com';
+  //static const String prodBase = 'https://www.paulotransportes.com';
 
   static String get base => prodBase;
 }
