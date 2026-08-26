@@ -540,25 +540,74 @@ class _CanhotoPageState extends State<CanhotoPage> {
               "${c.dataHora.day}/${c.dataHora.month}/${c.dataHora.year} "
               "${c.dataHora.hour}:${c.dataHora.minute.toString().padLeft(2, '0')}",
             ),
-            trailing: Chip(
-              label: Text(
-                c.status == SyncStatus.synced
-                    ? "SINCRONIZADO"
-                    : c.status == SyncStatus.pending
-                        ? "PENDENTE"
-                        : "ERRO",
-              ),
-              backgroundColor: c.status == SyncStatus.synced
-                  ? Colors.green
-                  : c.status == SyncStatus.pending
-                      ? Colors.orange
-                      : Colors.red,
-              labelStyle: const TextStyle(color: Colors.white),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Chip(
+                  label: Text(
+                    c.status == SyncStatus.synced
+                        ? "SINCRONIZADO"
+                        : c.status == SyncStatus.pending
+                            ? "PENDENTE"
+                            : "ERRO",
+                  ),
+                  backgroundColor: c.status == SyncStatus.synced
+                      ? Colors.green
+                      : c.status == SyncStatus.pending
+                          ? Colors.orange
+                          : Colors.red,
+                  labelStyle: const TextStyle(color: Colors.white),
+                ),
+                if (c.status == SyncStatus.pending) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: _syncing
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.sync),
+                    onPressed: _syncing
+                        ? null
+                        : () async {
+                            await _retrySync(c);
+                          },
+                    tooltip: online ? "Tentar sincronizar" : "Sem internet",
+                  ),
+                ],
+              ],
             ),
           ),
         );
       },
     );
+  }
+  Future<void> _retrySync(Canhoto canhoto) async {
+    if (!mounted) return;
+
+    if (!online) {
+      _msg("Sem conexão. Tente novamente quando estiver online.");
+      return;
+    }
+
+    if (_syncing) return;
+    setState(() => _syncing = true);
+
+    try {
+      await syncer.sync();
+
+      await _carregarHoje();
+      await _limparSincronizados();
+      await _carregarHoje();
+    } catch (e) {
+      debugPrint("ERRO SYNC (retry): $e");
+      _msg("Erro ao sincronizar.");
+    } finally {
+      if (mounted) {
+        setState(() => _syncing = false);
+      }
+    }
   }
 
   @override
