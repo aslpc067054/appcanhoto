@@ -558,7 +558,8 @@ class _CanhotoPageState extends State<CanhotoPage> {
                           : Colors.red,
                   labelStyle: const TextStyle(color: Colors.white),
                 ),
-                if (c.status == SyncStatus.pending) ...[
+                if (c.status == SyncStatus.pending ||
+                    c.status == SyncStatus.error) ...[
                   const SizedBox(width: 8),
                   IconButton(
                     icon: _syncing
