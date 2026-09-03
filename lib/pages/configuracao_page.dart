@@ -2,9 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:appcanhoto/pages/cadastro_usuario_page.dart';
 import 'package:appcanhoto/pages/cadastro_empresa_page.dart';
 import 'package:appcanhoto/pages/permissao_page.dart'; // <<< novo import
+import 'package:appcanhoto/pages/api_terceiro_page.dart';
 
 class ConfiguracaoPage extends StatelessWidget {
-  const ConfiguracaoPage({super.key});
+  final bool mostrarCadastroApiTerceiro;
+
+  const ConfiguracaoPage({
+    super.key,
+    this.mostrarCadastroApiTerceiro = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +60,15 @@ class ConfiguracaoPage extends StatelessWidget {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const CadastroEmpresaPage()));
                   },
                 ),
+                if (mostrarCadastroApiTerceiro)
+                  _buildIcon(
+                    context,
+                    icon: Icons.settings,
+                    label: "API Terceiros",
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const ApiTerceiroPage()));
+                    },
+                  ),
               ],
             ),
           ),

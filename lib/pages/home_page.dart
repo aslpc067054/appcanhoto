@@ -106,7 +106,14 @@ static String get apiBaseUrl => '${ApiConfig.base}/api/permissoes';
   }
 
   void _abrirConfiguracoes(BuildContext context) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => const ConfiguracaoPage()));
+        Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ConfiguracaoPage(
+          mostrarCadastroApiTerceiro: _permissao == 'administrador',
+        ),
+      ),
+    );
   }
 
   void _abrirCanhotos(BuildContext context) {
